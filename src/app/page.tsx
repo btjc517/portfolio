@@ -981,7 +981,7 @@ export default function Page() {
                   <h2 className="text-xl font-medium ml-4 lg:ml-0">Education</h2>
                   <div className="mt-4">
                     {RESUME_DATA.education.map((education, idx) => (
-                      <div className={`group flex w-full flex-col rounded-lg hover:rounded-xl`}>
+                      <div key={idx} className={`group flex w-full flex-col rounded-lg hover:rounded-xl`}>
                         <div className="flex items-stretch">
                           <div className="flex items-center justify-center relative">
                             {idx == 0 ? 
