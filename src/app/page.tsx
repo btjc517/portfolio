@@ -240,7 +240,7 @@ export default function Home() {
         <span>Portrait redrawn in characters from a living photograph, every frame</span>
         <a href="#top">Back to top ↑</a>
       </footer>
-      <Reveals inClass={s.in} />
+      <Reveals />
     </div>
   );
 }

@@ -815,7 +815,7 @@
   transition: opacity 0.9s var(--ease), transform 1s var(--ease);
   transition-delay: calc(var(--d, 0) * 70ms);
 }
-:global(.js) .reveal.in {
+:global(.js) .reveal[data-shown] {
   opacity: 1;
   transform: none;
 }
