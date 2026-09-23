@@ -5,7 +5,7 @@ import type { Role } from "@/data/cv";
 import { ArrowUpRight } from "./icons";
 import s from "./site.module.css";
 
-export function Experience({ roles }: { roles: Role[] }) {
+export function Experience({ roles, active, setHover }: { roles: Role[]; active?: string; setHover?: (id: string | null) => void }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set([roles[0]?.id]));
   const toggle = (id: string) =>
     setOpen((prev) => {
@@ -20,7 +20,15 @@ export function Experience({ roles }: { roles: Role[] }) {
       {roles.map((r, i) => {
         const isOpen = open.has(r.id);
         return (
-          <li key={r.id} className={`${s.item} ${isOpen ? s.itemOpen : ""} ${s.reveal}`} data-reveal style={{ ["--d" as string]: i }}>
+          <li
+            key={r.id}
+            className={`${s.item} ${isOpen ? s.itemOpen : ""} ${active === r.id ? s.itemActive : ""} ${s.reveal}`}
+            data-reveal
+            data-stage-id={r.id}
+            onPointerEnter={() => setHover?.(r.id)}
+            onPointerLeave={() => setHover?.(null)}
+            style={{ ["--d" as string]: i }}
+          >
             <button className={s.row} aria-expanded={isOpen} aria-controls={`role-${r.id}`} onClick={() => toggle(r.id)}>
               <span className={`${s.mono} ${s.when} ${r.now ? s.whenNow : ""}`}>
                 {r.now ? <span className={s.dot} aria-hidden="true" /> : null}

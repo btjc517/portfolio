@@ -47,6 +47,7 @@ export function Wordmark({ text }: { text: string }) {
     let time = 0;
     let introAt = reduced ? -100 : Infinity; // set when first seen
     let visible = false;
+    let cancelled = false;
     const pointer = { x: -1e4, y: -1e4, on: false };
 
     function glyphs(chars: string) {
@@ -187,7 +188,7 @@ export function Wordmark({ text }: { text: string }) {
       last = now;
       step(dt);
       render();
-      raf = visible && !document.hidden ? requestAnimationFrame(frame) : 0;
+      raf = visible && !document.hidden && !cancelled ? requestAnimationFrame(frame) : 0;
     }
 
     function start() {
@@ -226,6 +227,7 @@ export function Wordmark({ text }: { text: string }) {
       } catch {
         // use whatever resolves
       }
+      if (cancelled) return;
       build();
       render();
       io.observe(canvas);
@@ -237,6 +239,7 @@ export function Wordmark({ text }: { text: string }) {
     })();
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
       raf = 0;
       visible = false;

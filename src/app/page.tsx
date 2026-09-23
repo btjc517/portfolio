@@ -1,12 +1,11 @@
 import { education, person, projects, roles, toolkit } from "@/data/cv";
 import { Clock } from "@/components/site/clock";
-import { Decode } from "@/components/site/decode";
-import { Experience } from "@/components/site/experience";
 import { ArrowDown, ArrowUpRight } from "@/components/site/icons";
 import { Miniature } from "@/components/site/miniature";
 import { Nav } from "@/components/site/nav";
 import { Portrait } from "@/components/site/portrait";
 import { Reveals } from "@/components/site/reveals";
+import { EducationSection, RailHead, WorkSection } from "@/components/site/staged";
 import { Statement } from "@/components/site/statement";
 import { Wordmark } from "@/components/site/wordmark";
 import s from "@/components/site/site.module.css";
@@ -14,12 +13,10 @@ import s from "@/components/site/site.module.css";
 const PROFILE =
   "I lead the technology at ImpactOS, an AI platform that turns messy ESG and social value data into audit-ready reports. I designed it and shipped the first version alone. Before that I co-founded a software company in Riyadh. I'm in my final year of AI and Computer Science at Birmingham, and I run a fleet of coding agents across three machines on tooling I wrote myself.";
 
-function Rail({ n, label, count }: { n: string; label: string; count?: number }) {
+function Rail(props: { n: string; label: string; count?: number }) {
   return (
-    <div className={`${s.rail} ${s.mono}`}>
-      <span className={s.railNum}>{n}</span>
-      <Decode text={label} />
-      {count ? <span className={s.railCount}>{String(count).padStart(2, "0")}</span> : null}
+    <div className={s.rail}>
+      <RailHead {...props} />
     </div>
   );
 }
@@ -111,18 +108,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="work" className={s.section} aria-labelledby="work-h">
-          <div className={s.rule} />
-          <div className={s.grid}>
-            <Rail n="02" label="Experience" count={roles.length} />
-            <div className={s.body}>
-              <h2 id="work-h" className="sr-only">
-                Experience
-              </h2>
-              <Experience roles={roles} />
-            </div>
-          </div>
-        </section>
+        <WorkSection roles={roles} />
 
         <section id="projects" className={s.section} aria-labelledby="projects-h">
           <div className={s.rule} />
@@ -151,29 +137,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="education" className={s.section} aria-labelledby="education-h">
-          <div className={s.rule} />
-          <div className={s.grid}>
-            <Rail n="04" label="Education" />
-            <div className={s.body}>
-              <h2 id="education-h" className="sr-only">
-                Education
-              </h2>
-              <div className={s.list}>
-                {education.map((e, i) => (
-                  <div key={e.school} className={`${s.eduRow} ${s.reveal}`} data-reveal style={{ ["--d" as string]: i }}>
-                    <span className={`${s.mono} ${s.when}`}>{e.when}</span>
-                    <span className={s.main}>
-                      <span className={s.title}>{e.school}</span>
-                      <span className={s.summary}>{e.award}</span>
-                    </span>
-                    <span className={s.eduNote}>{e.note}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <EducationSection education={education} />
 
         <section id="toolkit" className={s.section} aria-labelledby="toolkit-h">
           <div className={s.rule} />

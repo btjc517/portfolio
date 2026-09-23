@@ -1,3 +1,5 @@
+import type { SceneKind } from "@/components/site/ascii/scenes";
+
 // Everything the site says about Ben, in one place. Facts come from
 // src/data/resume-data.tsx and public/BenCheesebrough-CV.pdf; the wording is written for the web.
 
@@ -24,6 +26,9 @@ export type Role = {
   place: string;
   url?: string;
   now?: boolean;
+  /** The ASCII scene shown beside the role, and a few words for its caption. */
+  scene: SceneKind;
+  caption: string;
   summary: string;
   points: string[];
   stack: string[];
@@ -32,6 +37,8 @@ export type Role = {
 export const roles: Role[] = [
   {
     id: "impactos",
+    scene: "report",
+    caption: "The report, assembling",
     company: "ImpactOS",
     role: "Founding Technical Lead",
     when: "2025 to now",
@@ -50,6 +57,8 @@ export const roles: Role[] = [
   },
   {
     id: "access",
+    scene: "court",
+    caption: "Court 2, booked",
     company: "Access Technologies",
     role: "Co-Founder",
     when: "2023 to 2024",
@@ -66,6 +75,8 @@ export const roles: Role[] = [
   },
   {
     id: "amf1",
+    scene: "track",
+    caption: "Race pace",
     company: "Aston Martin F1",
     role: "Summer Intern",
     when: "2022",
@@ -79,6 +90,8 @@ export const roles: Role[] = [
   },
   {
     id: "fiera",
+    scene: "skyline",
+    caption: "The fund, and the city",
     company: "Fiera Real Estate",
     role: "Summer Intern",
     when: "2022",
@@ -93,6 +106,8 @@ export const roles: Role[] = [
   },
   {
     id: "create",
+    scene: "feed",
+    caption: "The feed",
     company: "Create Group",
     role: "Summer Intern",
     when: "2022",
@@ -145,20 +160,29 @@ export const projects: Project[] = [
   },
 ];
 
-export const education = [
+export const education: { id: string; school: string; award: string; when: string; note: string; scene: SceneKind; caption: string }[] = [
   {
+    id: "birmingham",
+    scene: "network",
+    caption: "A forward pass",
     school: "University of Birmingham",
     award: "B.Sc. Artificial Intelligence and Computer Science",
     when: "2024 to 2027",
     note: "Final year",
   },
   {
+    id: "cheltenham",
+    scene: "waves",
+    caption: "Two sources, one pattern",
     school: "Cheltenham College",
     award: "A Levels",
     when: "2021 to 2023",
     note: "Mathematics A, Computer Science A, Physics A",
   },
   {
+    id: "jumeirah",
+    scene: "dubai",
+    caption: "Dubai, at dusk",
     school: "Jumeirah College, Dubai",
     award: "GCSEs",
     when: "2019 to 2021",

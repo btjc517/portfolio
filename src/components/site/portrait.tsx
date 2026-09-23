@@ -61,6 +61,7 @@ export type Tune = {
   knee?: number; // brightness above which highlights are compressed
   rows?: number; // rows of characters down the portrait, whatever the screen
   cap?: number; // the brightest glyph alpha
+  grain?: number; // 0 to 1: faint characters flickering in the room and small density changes on the face
 };
 const TUNE: Required<Tune> = {
   ramp: RAMP,
@@ -76,16 +77,19 @@ const TUNE: Required<Tune> = {
   floor: 0.16,
   rows: 138,
   cap: 1,
+  grain: 0,
 };
 
 // How much of the photograph comes through. "detailed" reads as a photograph set in type;
-// Ben found it too clear, and creepy. The others trade likeness for characters.
+// Ben found it too clear, and creepy. "soft" then lost too much detail. "balanced" sits between
+// them, with a little grain so it feels like a signal rather than a print.
 export const LOOKS: Record<string, Tune> = {
   detailed: {},
+  balanced: { rows: 104, local: 0.45, gamma: 1.12, flat: 0.3, floor: 0.3, back: 0.24, cap: 0.92, grain: 0.55 },
   soft: { rows: 88, local: 0.25, gamma: 1.05, flat: 0.4, floor: 0.36, back: 0.24, cap: 0.88 },
   abstract: { rows: 70, local: 0.05, gamma: 1.0, flat: 0.55, floor: 0.42, back: 0.22, cap: 0.82 },
 };
-export const DEFAULT_LOOK = "soft";
+export const DEFAULT_LOOK = "balanced";
 
 // 4x4 Bayer matrix, for dithering that stays put from frame to frame.
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16 - 0.5);
@@ -266,6 +270,7 @@ export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onRea
     let video: HTMLVideoElement | null = null;
     let lastVideoTime = -1;
     let introT0 = intro && !reduced ? -1 : -Infinity;
+    let grainSeed = 0;
     let toneLo = -1;
     let toneHi = 1;
     let blinkAt = 2.5;
@@ -552,15 +557,34 @@ export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onRea
       const it = time - introT0;
       const introOn = it < 3;
       const oy = (sprites[0].height - cellH * dpr) / 2;
+      // Grain: a new pattern each time the picture updates, like film, never off the grid.
+      const seed = ++grainSeed;
+      const grain = introOn ? 0 : T.grain;
+      const speck = grain * 0.014; // chance a blank cell in the room shows a faint character
+      const shift = grain * 0.045; // chance a cell on the person moves one step up or down the ramp
       for (let r = 0; r < rows; r++) {
         const y = Math.round(r * cellH * dpr - oy);
         for (let c = 0; c < cols; c++) {
           const i = r * cols + c;
           alpha[i] += (target[i] - alpha[i]) * 0.6;
           let g = glyph[i];
-          if (g === 0) continue;
+          if (g === 0) {
+            if (grain > 0 && person[i] < 0.3) {
+              const h = hash(i, seed);
+              if (h < speck) {
+                lctx.globalAlpha = 0.1 + 0.22 * (h / speck);
+                lctx.drawImage(sprites[1 + ((h * 997) % 3 | 0)], Math.round((left + c * cellW) * dpr) - 1, y);
+              }
+            }
+            continue;
+          }
           // Dim cells are dim glyphs as well as light ones, and the room sits well behind.
           let a = ALPHA[(clamp(alpha[i]) * 256) | 0] * (0.55 + 0.45 * person[i]);
+          if (grain > 0) {
+            const h = hash(i + 7919, seed);
+            if (g <= rampTop && h < shift) g = Math.max(1, Math.min(rampTop, g + (h < shift / 2 ? -1 : 1)));
+            a *= 1 + (hash(i, seed + 31) - 0.5) * 0.16 * grain;
+          }
           if (introOn) {
             const d = it - reveal[i];
             if (d < -0.35) continue;
