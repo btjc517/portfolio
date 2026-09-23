@@ -59,8 +59,33 @@ export type Tune = {
   floor?: number; // the dimmest glyph alpha on the person
   leading?: number; // row height as a fraction of the font size
   knee?: number; // brightness above which highlights are compressed
+  rows?: number; // rows of characters down the portrait, whatever the screen
+  cap?: number; // the brightest glyph alpha
 };
-const TUNE: Required<Tune> = { ramp: RAMP, edges: EDGES, leading: LEADING, knee: 0.72, flat: 0.2, dither: 0.9, back: 0.22, gamma: 1.25, local: 1.0, edge: 1.5, floor: 0.16 };
+const TUNE: Required<Tune> = {
+  ramp: RAMP,
+  edges: EDGES,
+  leading: LEADING,
+  knee: 0.72,
+  flat: 0.2,
+  dither: 0.9,
+  back: 0.22,
+  gamma: 1.25,
+  local: 1.0,
+  edge: 1.5,
+  floor: 0.16,
+  rows: 138,
+  cap: 1,
+};
+
+// How much of the photograph comes through. "detailed" reads as a photograph set in type;
+// Ben found it too clear, and creepy. The others trade likeness for characters.
+export const LOOKS: Record<string, Tune> = {
+  detailed: {},
+  soft: { rows: 88, local: 0.25, gamma: 1.05, flat: 0.4, floor: 0.36, back: 0.24, cap: 0.88 },
+  abstract: { rows: 70, local: 0.05, gamma: 1.0, flat: 0.55, floor: 0.42, back: 0.22, cap: 0.82 },
+};
+export const DEFAULT_LOOK = "soft";
 
 // 4x4 Bayer matrix, for dithering that stays put from frame to frame.
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16 - 0.5);
@@ -139,8 +164,8 @@ function glyphShapes(family: string, glyphs: string, leading: number) {
 type Props = {
   ground?: string;
   ink?: string;
-  /** Font size of the characters in CSS pixels. By default it follows the stage height, so a
-   *  phone's shorter hero gets smaller characters and the face keeps enough of them to read. */
+  /** Font size of the characters in CSS pixels. By default the look sets the row count and the
+   *  font follows from the stage height. */
   font?: number;
   /** Characters resolve out of noise, face first, on first load. */
   intro?: boolean;
@@ -150,7 +175,9 @@ type Props = {
   clip?: boolean;
 };
 
-type Particle = { x: number; y: number; vx: number; vy: number; g: number; life: number; t: number; a: number };
+// A character that has come off the silhouette. It moves on the grid, one cell at a time, and
+// leaves a short fading trail in the cells it has just left.
+type Particle = { col: number; row: number; g: number; life: number; t: number; a: number; every: number; wait: number; steps: number; trail: [number, number][] };
 
 export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onReady, tune, clip = true }: Props = {}) {
   const tuneKey = JSON.stringify(tune ?? {});
@@ -172,7 +199,10 @@ export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onRea
     if (!ctx2d) return;
     const ctx: CanvasRenderingContext2D = ctx2d;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const T: Required<Tune> = { ...TUNE, ...(JSON.parse(tuneKey) as Tune) };
+    // A ?look= on the page URL picks a preset, so looks can be compared on a phone.
+    const asked = new URLSearchParams(window.location.search).get("look");
+    const preset = LOOKS[asked ?? ""] ?? LOOKS[DEFAULT_LOOK];
+    const T: Required<Tune> = { ...TUNE, ...preset, ...(JSON.parse(tuneKey) as Tune) };
     const GL = T.ramp + Array.from(T.edges).filter((ch) => !T.ramp.includes(ch)).join("");
     const rampTop = T.ramp.length - 1;
     const aspect = ADVANCE / T.leading;
@@ -186,7 +216,7 @@ export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onRea
     const SHARP = new Float32Array(257);
     for (let k = 0; k <= 256; k++) SHARP[k] = Math.pow(k / 256, T.edge);
     const ALPHA = new Float32Array(257);
-    for (let k = 0; k <= 256; k++) ALPHA[k] = T.floor + (1 - T.floor) * Math.pow(Math.min(1, (k / 256) * 1.25), 0.7);
+    for (let k = 0; k <= 256; k++) ALPHA[k] = T.floor + (T.cap - T.floor) * Math.pow(Math.min(1, (k / 256) * 1.25), 0.7);
 
     let cancelled = false;
     let raf = 0;
@@ -290,8 +320,8 @@ export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onRea
       dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = overlay.width = Math.round(W * dpr);
       canvas.height = overlay.height = Math.round(H * dpr);
-      const fontPx = font ?? clamp(H / 96, 6.6, 9.5);
-      rows = Math.round(clamp(H / (fontPx * T.leading), 60, 170));
+      // The row count is the look, so a phone shows the same picture in smaller characters.
+      rows = Math.round(clamp(font ? H / (font * T.leading) : T.rows, 50, 170));
       cellH = H / rows;
       cellW = cellH * aspect;
       const frameW = H * (SRC_ASPECT / (CROP.y1 - CROP.y0));
@@ -561,16 +591,21 @@ export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onRea
       let by0 = Infinity;
       let bx1 = -Infinity;
       let by1 = -Infinity;
-      for (const p of particles) {
-        const k = p.t / p.life;
-        const x = Math.round(p.x * dpr);
-        const y = Math.round(p.y * dpr - oy);
-        octx.globalAlpha = p.a * (1 - k) * smooth(0, 0.1, k);
-        octx.drawImage(sprites[p.g], x, y);
+      const put = (col: number, row: number, g: number, a: number) => {
+        const x = Math.round((left + col * cellW) * dpr) - 1;
+        const y = Math.round(row * cellH * dpr - oy);
+        octx.globalAlpha = a;
+        octx.drawImage(sprites[g], x, y);
         if (x < bx0) bx0 = x;
         if (y < by0) by0 = y;
         if (x + sw > bx1) bx1 = x + sw;
         if (y + sh > by1) by1 = y + sh;
+      };
+      for (const p of particles) {
+        const k = p.t / p.life;
+        const a = p.a * (1 - k * k);
+        p.trail.forEach(([c, r], n) => put(c, r, Math.max(1, p.g - 1 - n), a * (0.45 - n * 0.14)));
+        put(p.col, p.row, p.g, a);
       }
       octx.globalAlpha = 1;
       dirtyBox = [bx0 - 2, by0 - 2, bx1 + 2, by1 + 2];
@@ -579,40 +614,43 @@ export function Portrait({ ground = GROUND, ink = INK, font, intro = true, onRea
     function stepParticles(dt: number) {
       const it = time - introT0;
       if (it > 1.2 && !reduced) {
-        const rate = rows * 0.5; // per second
-        let spawn = rate * dt + Math.random();
-        while (spawn-- >= 1 && particles.length < 160) {
+        let spawn = rows * 0.35 * dt + Math.random();
+        while (spawn-- >= 1 && particles.length < 140) {
           const r = Math.floor(rows * (0.08 + Math.random() * 0.62));
           const c = edge[r];
           if (c < 0) continue;
           const i = r * cols + c;
-          const g = glyph[i] || glyph[i + 1];
-          if (!g) continue;
+          if (!glyph[i]) continue;
           particles.push({
-            x: left + c * cellW,
-            y: r * cellH,
-            vx: -(12 + Math.random() * 46) * (H / 900),
-            vy: (Math.random() - 0.5) * 6,
-            g,
-            life: 2 + Math.random() * 3.5,
+            col: c - 1,
+            row: r,
+            // Leaves as a ramp character as dense as the cell it came from.
+            g: Math.max(2, Math.round(clamp(alpha[i] * 1.2) * rampTop)),
+            life: 1.6 + Math.random() * 3,
             t: 0,
-            a: 0.25 + 0.35 * Math.random() * clamp(alpha[i] * 1.5),
+            a: 0.3 + 0.4 * Math.random(),
+            every: 1 / (5 + Math.random() * 12),
+            wait: 0,
+            steps: 0,
+            trail: [],
           });
         }
       }
-      const nt = time * 0.15;
       for (let k = particles.length - 1; k >= 0; k--) {
         const p = particles[k];
         p.t += dt;
-        if (p.t >= p.life || p.x < -cellW) {
-          particles.splice(k, 1);
-          continue;
+        p.wait += dt;
+        while (p.wait >= p.every) {
+          p.wait -= p.every;
+          p.trail.unshift([p.col, p.row]);
+          if (p.trail.length > 3) p.trail.pop();
+          p.col--;
+          // Now and then it drops or rises a row, still on the grid.
+          if (Math.random() < 0.1) p.row = Math.max(0, Math.min(rows - 1, p.row + (Math.random() < 0.5 ? -1 : 1)));
+          // It thins toward the lightest characters as it goes.
+          if (++p.steps % 4 === 0) p.g = Math.max(1, p.g - 1);
         }
-        const curl = noise(p.x * 0.004 + nt, p.y * 0.004) - 0.5;
-        p.x += p.vx * dt;
-        p.y += (p.vy + curl * 30) * dt;
-        // Characters change as they drift away, thinning toward the lightest glyphs.
-        if (Math.random() < dt * 3) p.g = Math.max(1, Math.min(GL.length - 1, p.g + (Math.random() < 0.6 ? -3 : 2)));
+        if (p.t >= p.life || left + p.col * cellW < -cellW * 4) particles.splice(k, 1);
       }
     }
 

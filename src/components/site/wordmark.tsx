@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 // The name set across the full width in characters: Geist rasterised at cell resolution,
 // coverage mapped to a density ramp. It resolves out of noise the first time it scrolls into
-// view; the pointer pushes cells aside and they spring back.
+// view; the pointer pushes cells aside, a whole cell at a time, and they spring back.
 
 const RAMP = " .,:;-=+*"; // edges, by coverage
 const FILL = "=+*x#"; // the solid body of the letters, a slow texture
@@ -149,7 +149,10 @@ export function Wordmark({ text }: { text: string }) {
         }
         if (c.heat > 0.15 && Math.random() < c.heat) s = noise[(Math.random() * noise.length) | 0];
         ctx.globalAlpha = alpha;
-        ctx.drawImage(s, Math.round((c.x + c.dx) * dpr) - 1, Math.round((c.y + c.dy) * dpr));
+        // Pushed cells jump from cell to cell rather than sliding, so the name stays on its grid.
+        const gx = c.x + Math.round(c.dx / cellW) * cellW;
+        const gy = c.y + Math.round(c.dy / cellH) * cellH;
+        ctx.drawImage(s, Math.round(gx * dpr) - 1, Math.round(gy * dpr));
       }
       ctx.globalAlpha = 1;
     }
