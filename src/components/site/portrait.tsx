@@ -21,7 +21,6 @@ const VIDEO = "/cv/portrait.mp4";
 const VIDEO_WAIT = 4000; // ms to wait for the clip before giving up on it
 const INTRO_DUR = 0.85; // seconds each cell takes to land
 const INTRO_END = 2.2; // seconds after which the intro is over for every cell
-const FRAY_IN = 3.2; // seconds over which the edge starts shedding once the intro is over
 const SRC_W = 375;
 const SRC_H = 500;
 const CROP = { x0: 0, y0: 0.12, x1: 1, y1: 1 };
@@ -488,7 +487,6 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
     }
 
     function build(family: string) {
-      const introPlays = introT0 === -1;
       // Size from the stage, so the portrait can fill a hero section as well as the viewport.
       W = stage.clientWidth || window.innerWidth;
       H = stage.clientHeight || window.innerHeight;
@@ -586,19 +584,16 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
           cells.push(cell);
           if (canFly) {
             loose.push(cell);
-            // With the intro, every edge character stays in place until it has landed, then they
-            // start coming loose one by one over FRAY_IN seconds, so the edge thins out gradually
-            // instead of losing most of its characters in one frame when the intro ends.
-            cell.dwell = introPlays ? INTRO_END + Math.random() * FRAY_IN : Math.random() * (6 - 5 * cell.f);
+            cell.dwell = Math.random() * (6 - 5 * cell.f);
           }
         }
       }
       shimmer = [];
       updateTone();
-      // Run the field forward so the first frame already has a drift.
-      // Without the intro (a rebuild after a resize), run the field forward so the edge already
-      // has its drift on the first frame.
-      if (!reduced && !introPlays) for (let k = 0; k < 240; k++) stepField(1 / 30);
+      // Run the field forward so the edge is already shedding on the first frame, as if it always
+      // had been. The intro draws the picture in that state (see render), so nothing changes
+      // when the intro ends.
+      if (!reduced) for (let k = 0; k < 240; k++) stepField(1 / 30);
       if (introT0 === -1) introT0 = time;
       else introT0 = -Infinity; // a rebuild after a resize draws the picture straight away
     }
@@ -907,7 +902,8 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
       const bx = breathX * cellW;
       const by = breathY * cellH;
       const it = time - introT0;
-      const introFade = it < INTRO_END ? smooth((it - 0.6) / 1.2) : 1;
+      // How far a cell's intro has got: 0 before it sets off, 1 once it has landed.
+      const landed = (c: Cell) => (it < INTRO_END ? smooth(clamp((it - c.id) / INTRO_DUR, 0, 1) * 1.6) : 1);
       for (const c of cells) {
         const t = tone[c.i];
         if (t < 0.035) continue;
@@ -920,12 +916,16 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
         const x = c.hx + bx * m;
         const y = c.hy + by * m;
         if (it < INTRO_END) {
+          // The intro assembles the edge as it already is: a character that is off flying is not
+          // drawn at home, and one growing back fades in as it would anyway.
+          if (c.phase === 1) continue;
+          const regrow = c.phase === 2 ? smooth(c.t / 0.4) : 1;
           const p = clamp((it - c.id) / INTRO_DUR, 0, 1);
           if (p <= 0) continue;
           const e = 1 - Math.pow(1 - p, 3);
           // In flight the character is still noise; it only becomes the picture as it lands.
           const flying = p < 0.72 ? 1 + ((hash(c.i, Math.floor(it * 18)) * (rampText.length - 1)) | 0) : ch;
-          drawCell(x + Math.round((c.ix * (1 - e)) / cellW) * cellW, y + Math.round((c.iy * (1 - e)) / cellH) * cellH, flying, alpha * smooth(p * 1.6));
+          drawCell(x + Math.round((c.ix * (1 - e)) / cellW) * cellW, y + Math.round((c.iy * (1 - e)) / cellH) * cellH, flying, alpha * smooth(p * 1.6) * regrow);
           continue;
         }
         if (c.phase === 0) drawCell(x, y, ch, alpha);
@@ -934,7 +934,8 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
       for (const c of loose) {
         if (c.phase !== 1) continue;
         const k = c.t / c.life;
-        const a = c.alphaNow * (1 - k * k) * (0.5 + 0.4 * c.f) * introFade;
+        // A character already in flight appears as the part of the edge it came from lands.
+        const a = c.alphaNow * (1 - k * k) * (0.5 + 0.4 * c.f) * landed(c);
         c.trail.forEach(([dc, dr], n) => drawCell(c.hx + dc * cellW, c.hy + dr * cellH, Math.max(1, c.chNow - 1 - n), a * (0.4 - n * 0.2)));
         drawCell(c.hx + c.dc * cellW, c.hy + c.dr * cellH, c.chNow, a);
       }
