@@ -408,16 +408,60 @@
   min-width: 0;
 }
 
-/* The pinned scene in the left column of Experience and Education. */
+/* Experience and Education give the scene the left five columns, pinned while the rows scroll
+   beside it. Tall for Experience, whose rows open; wide for Education, whose three rows do not. */
+.railStaged {
+  grid-column: 1 / span 5;
+  container-type: inline-size;
+}
+.railStaged .railCount {
+  margin-right: 0;
+}
+.bodyStaged {
+  grid-column: 6 / -1;
+  padding-left: clamp(8px, 1.8vw, 32px);
+}
 .stage {
-  margin: 0 clamp(16px, 2.6vw, 44px) 0 0;
+  margin: 0;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
+.stageBar {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 14px 11px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-3);
+}
+.stageIdx {
+  flex: none;
+  color: var(--ink);
+}
+.stageName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-2);
+}
+.stageWhere {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  white-space: nowrap;
+}
+.stageCoords {
+  color: var(--ink-4);
+}
 .stageScreen {
   position: relative;
-  aspect-ratio: 4 / 3;
+  height: min(100cqw, calc(100svh - 270px));
+  min-height: 240px;
   overflow: hidden;
+}
+.stage[data-shape="wide"] .stageScreen {
+  height: min(52cqw, calc(100svh - 270px));
 }
 .stageScreen canvas {
   position: absolute;
@@ -426,19 +470,39 @@
   height: 100%;
   display: block;
 }
-.stageCap {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px 11px;
+/* One cell per year; a lit bar marks the years the active row covers. */
+.years {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 3px;
+  padding: 12px 14px 13px;
   border-top: 1px solid var(--line);
-  color: var(--ink-3);
+  color: var(--ink-4);
 }
-.stageName {
-  color: var(--ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.year {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  transition: color 0.5s var(--ease);
+}
+.year::before {
+  content: "";
+  height: 2px;
+  background: var(--line-2);
+  transition: background-color 0.5s var(--ease), opacity 0.5s var(--ease);
+}
+.year[data-on] {
+  color: var(--ink);
+}
+.year[data-on]::before {
+  background: var(--ink-2);
+}
+.year[data-live]::before {
+  background: var(--accent);
+}
+.year[data-future]::before {
+  opacity: 0.4;
 }
 .itemActive .when {
   color: var(--ink);
@@ -501,10 +565,18 @@
   width: 100%;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 9.5rem minmax(0, 1fr) 8rem 20px;
+  grid-template-columns: minmax(0, 1fr) 20px;
   column-gap: var(--gap);
-  align-items: baseline;
-  padding: 24px 0;
+  row-gap: 10px;
+  padding: 24px 0 26px;
+}
+/* Dates and place, in a line above the title. */
+.rowMeta {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: var(--ink-3);
 }
 .row:focus-visible {
   outline: 1px solid var(--accent);
@@ -520,6 +592,7 @@
   color: var(--ink);
 }
 .main {
+  grid-column: 1;
   display: block;
   min-width: 0;
 }
@@ -542,11 +615,9 @@
   font-size: 14.5px;
   color: var(--ink-2);
 }
-.place {
-  color: var(--ink-3);
-  text-align: right;
-}
 .plus {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   position: relative;
   width: 11px;
   height: 11px;
@@ -589,7 +660,7 @@
 }
 .panelBody {
   display: grid;
-  grid-template-columns: 9.5rem minmax(0, 1fr) 8rem 20px;
+  grid-template-columns: minmax(0, 1fr) 20px;
   column-gap: var(--gap);
   padding-bottom: 32px;
   opacity: 0;
@@ -602,7 +673,7 @@
   transition-delay: 0.08s;
 }
 .points {
-  grid-column: 2;
+  grid-column: 1;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -622,7 +693,7 @@
   padding-top: 2px;
 }
 .meta {
-  grid-column: 2;
+  grid-column: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -635,8 +706,10 @@
   border-radius: 999px;
   color: var(--ink-2);
 }
+/* Pushed to the end of the chips' line, so it stays aligned when the chips wrap. */
 .visit {
-  margin-left: 10px;
+  margin-left: auto;
+  padding-left: 10px;
   display: inline-flex;
   gap: 6px;
   align-items: center;
@@ -719,16 +792,19 @@
 /* Education */
 .eduRow {
   display: grid;
-  grid-template-columns: 9.5rem minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   column-gap: var(--gap);
+  row-gap: 10px;
   align-items: baseline;
-  padding: 22px 0;
+  padding: 24px 0 26px;
   border-bottom: 1px solid var(--line);
+}
+.eduRow .rowMeta {
+  grid-column: 1 / -1;
 }
 .eduNote {
   font-size: 14px;
   color: var(--ink-2);
-  padding-top: 2px;
 }
 
 /* Toolkit */
@@ -949,11 +1025,13 @@
     background: var(--bg);
     box-shadow: 0 14px 18px -10px var(--bg);
   }
-  .railStaged .stage {
-    margin: 0;
+  .railStaged .stageScreen,
+  .railStaged .stage[data-shape="wide"] .stageScreen {
+    height: 42cqw;
+    min-height: 0;
   }
-  .railStaged .stageScreen {
-    aspect-ratio: 21 / 9;
+  .bodyStaged {
+    padding-left: 0;
   }
   .railCount {
     margin-right: 0;
@@ -1021,24 +1099,10 @@
     grid-template-columns: minmax(0, 1fr) 16px;
     row-gap: 8px;
   }
-  .row .when {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .row .main {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .row .place {
+  /* The pinned scene keeps its bar on a phone but drops the coordinates and the years. */
+  .stageCoords,
+  .years {
     display: none;
-  }
-  .row .plus {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-  .points,
-  .meta {
-    grid-column: 1;
   }
   .title em {
     display: block;
@@ -1050,6 +1114,9 @@
   .eduRow {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 6px;
+  }
+  .eduRow .rowMeta {
+    margin-bottom: 2px;
   }
   .tools {
     grid-template-columns: repeat(2, minmax(0, 1fr));

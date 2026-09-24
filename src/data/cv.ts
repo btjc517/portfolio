@@ -25,6 +25,17 @@ export const person = {
 export const profile =
   "I lead the technology at ImpactOS, an AI platform that turns messy ESG and social value data into audit-ready reports. I designed it and shipped the first version alone. Before that I co-founded a software company in Riyadh. I'm in my final year of AI and Computer Science at Birmingham, and I run a fleet of coding agents across three machines on tooling I wrote myself.";
 
+/** Where each place is, shown in the scene beside Experience and Education. City centres, except
+ * Silverstone (the circuit) and Birmingham (the university's campus). */
+export const coords: Record<string, string> = {
+  London: "51.51° N, 0.13° W",
+  Riyadh: "24.71° N, 46.68° E",
+  Silverstone: "52.08° N, 1.02° W",
+  Dubai: "25.20° N, 55.27° E",
+  Birmingham: "52.45° N, 1.93° W",
+  Cheltenham: "51.90° N, 2.08° W",
+};
+
 export type Role = {
   id: string;
   company: string;
@@ -167,7 +178,7 @@ export const projects: Project[] = [
   },
 ];
 
-export const education: { id: string; school: string; award: string; when: string; note: string; scene: SceneKind; caption: string }[] = [
+export const education: { id: string; school: string; award: string; when: string; place: string; note: string; scene: SceneKind; caption: string }[] = [
   {
     id: "birmingham",
     scene: "network",
@@ -175,6 +186,7 @@ export const education: { id: string; school: string; award: string; when: strin
     school: "University of Birmingham",
     award: "B.Sc. Artificial Intelligence and Computer Science",
     when: "2024 to 2027",
+    place: "Birmingham",
     note: "Final year",
   },
   {
@@ -184,6 +196,7 @@ export const education: { id: string; school: string; award: string; when: strin
     school: "Cheltenham College",
     award: "A Levels",
     when: "2021 to 2023",
+    place: "Cheltenham",
     note: "Mathematics A, Computer Science A, Physics A",
   },
   {
@@ -193,6 +206,7 @@ export const education: { id: string; school: string; award: string; when: strin
     school: "Jumeirah College, Dubai",
     award: "GCSEs",
     when: "2019 to 2021",
+    place: "Dubai",
     note: "A* in Mathematics, Computer Science, Physics, Chemistry and Biology",
   },
 ];

@@ -362,6 +362,10 @@ function scout(cols: number, rows: number): Sim {
 function report(cols: number, rows: number): Sim {
   const names = ["scope 1", "scope 2", "scope 3", "energy", "water", "waste", "social", "governance"];
   const lines = Math.max(3, Math.min(names.length, rows - 8));
+  // With rows to spare (the large stage) the lines spread out and each bar is two characters thick.
+  const step = clamp(Math.floor((rows - 9) / lines), 1, 3);
+  const thick = step >= 3 ? 2 : 1;
+  const y0 = step > 1 ? 4 : 3;
   const barX = 14;
   const barW = Math.max(6, cols - barX - 8);
   let vals = names.map(() => rand(0.15, 0.95));
@@ -385,16 +389,16 @@ function report(cols: number, rows: number): Sim {
       for (let x = 2; x < cols - 2; x++) g.put(x, 2, "-", 0.12);
       const grow = ease((t - lines * TYPE) / GROW);
       for (let k = 0; k < lines; k++) {
-        const y = 3 + k;
+        const y = y0 + k * step;
         const shown = clamp((t - k * TYPE) / TYPE);
         if (shown <= 0) break;
         const label = names[k].slice(0, Math.ceil(names[k].length * shown));
         g.put(2, y, label, 0.45 * fade);
         const n = Math.round(barW * vals[k] * grow);
-        for (let x = 0; x < barW; x++) g.put(barX + x, y, x < n ? "#" : ".", (x < n ? 0.7 : 0.12) * fade);
+        for (let r = 0; r < thick; r++) for (let x = 0; x < barW; x++) g.put(barX + x, y + r, x < n ? "#" : ".", (x < n ? 0.7 : 0.12) * fade);
         if (grow > 0) g.put(barX + barW + 2, y, `${Math.round(vals[k] * 100 * grow)}%`.padStart(4), 0.5 * fade);
       }
-      const yb = 3 + lines;
+      const yb = y0 + (lines - 1) * step + thick + (step > 1 ? 1 : 0);
       for (let x = 2; x < cols - 2; x++) g.put(x, yb, "-", 0.12);
       if (rows > yb + 2) g.put(2, yb + 1, "UN SDG  UK SVM  CSRD", 0.3 * fade);
       const done = t > lines * TYPE + GROW;
@@ -614,7 +618,8 @@ function skyline(cols: number, rows: number): Sim {
 
 function feed(cols: number, rows: number): Sim {
   const pw = Math.min(26, Math.max(16, Math.floor(cols * 0.46)));
-  const px = cols > 40 ? 3 : Math.floor((cols - pw) / 2);
+  // Wide screens centre the phone and its reach bar together; narrow ones centre the phone alone.
+  const px = cols > 40 ? Math.max(3, Math.floor((cols - pw - 10) / 2)) : Math.floor((cols - pw) / 2);
   const py = 2;
   const ph = rows - 3;
   const POST = 7;

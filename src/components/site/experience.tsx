@@ -30,9 +30,12 @@ export function Experience({ roles, active, setHover }: { roles: Role[]; active?
             style={{ ["--d" as string]: i }}
           >
             <button className={s.row} aria-expanded={isOpen} aria-controls={`role-${r.id}`} onClick={() => toggle(r.id)}>
-              <span className={`${s.mono} ${s.when} ${r.now ? s.whenNow : ""}`}>
-                {r.now ? <span className={s.dot} aria-hidden="true" /> : null}
-                {r.when}
+              <span className={`${s.mono} ${s.rowMeta}`}>
+                <span className={`${s.when} ${r.now ? s.whenNow : ""}`}>
+                  {r.now ? <span className={s.dot} aria-hidden="true" /> : null}
+                  {r.when}
+                </span>
+                <span>{r.place}</span>
               </span>
               <span className={s.main}>
                 <span className={s.title}>
@@ -41,7 +44,6 @@ export function Experience({ roles, active, setHover }: { roles: Role[]; active?
                 </span>
                 <span className={s.summary}>{r.summary}</span>
               </span>
-              <span className={`${s.mono} ${s.place}`}>{r.place}</span>
               <span className={s.plus} aria-hidden="true" />
             </button>
             <div className={s.panel} id={`role-${r.id}`} role="region" aria-label={`${r.company} details`}>

@@ -7,7 +7,9 @@ import { SCENES, type SceneKind } from "./ascii/scenes";
 
 // Draws one ASCII scene into a canvas. Scenes run only while on screen, speed up while their
 // tile is hovered, and hold a single frame under reduced motion. When `kind` changes the scene
-// scrambles into the next one, a cell at a time, rather than cutting.
+// scrambles into the next one, a cell at a time, rather than cutting. `rows` is roughly how many
+// rows of characters to fit, and `maxCell` caps the row height, so a large screen can show the
+// same scene with bigger characters rather than a sparse one.
 
 const SWITCH = 0.55; // seconds the scramble between scenes takes
 const NOISE = ".:;+=*x#%";
@@ -18,9 +20,11 @@ function hash(i: number, j: number) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-export function Miniature({ kind, label }: { kind: SceneKind; label: string }) {
+export function Miniature({ kind, label, rows = 24, maxCell = 15 }: { kind: SceneKind; label: string; rows?: number; maxCell?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const kindRef = useRef(kind);
+  const sizeRef = useRef({ rows, maxCell });
+  sizeRef.current = { rows, maxCell };
   const switchRef = useRef<((k: SceneKind) => void) | null>(null);
 
   useEffect(() => {
@@ -92,7 +96,7 @@ export function Miniature({ kind, label }: { kind: SceneKind; label: string }) {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
-      cellH = clamp(Math.round(H / 24), 10, 15);
+      cellH = clamp(Math.round(H / sizeRef.current.rows), 10, sizeRef.current.maxCell);
       cellW = cellH * ASPECT;
       const cols = Math.floor(W / cellW);
       const rows = Math.floor(H / cellH);
