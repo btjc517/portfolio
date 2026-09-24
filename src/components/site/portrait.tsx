@@ -3,8 +3,12 @@
 import { useEffect, useRef } from "react";
 
 // A photograph drawn in characters, room and all. It sits against the right edge at the
-// full height of its stage, and its left edge is always shedding characters that drift off
-// to the left and fade.
+// full height of its stage, and its left edge burns. The burning is a small fire simulation, the
+// classic ASCII "Doom fire" turned on its side: the body of the picture is the heat source, each
+// step every edge cell takes its heat from its neighbour on the fuel side, loses a random amount,
+// and drifts a row (mostly upward), and the picture shows wherever the heat is high enough. That
+// gives ragged tongues that lick out, split, flicker and die back. A character the fire drops
+// sometimes breaks off as an ember that drifts left and fades.
 //
 // The person moves: a generated living photograph (public/cv/portrait.mp4, picture on the
 // left half and a per-frame person mask on the right, made by scripts/portrait-mask-frames.swift)
@@ -30,33 +34,41 @@ const GROUND = "#0b0b0c";
 const CELL_ASPECT = 0.6;
 const ROWS = 88; // look 06: rows of characters down the frame, whatever the screen height
 const SHARPEN = 0.5;
-const LOOSE_SPAN = 0.24; // depth of the fray from the frame's left edge, as a fraction of the frame width
+const LOOSE_SPAN = 0.24; // how deep the burning edge reaches into the frame, as a fraction of its width
+const FIRE_HZ = 22; // fire steps per second
+const HEAT = 1; // heat of the fuel, the body of the picture
+const SHOW = 0.3; // a cell shows the picture while its heat is at least this
+const REACH = 0.5; // how far, on average, the flames reach across the band before dying
+const BURN_EMBERS = 0.07; // chance a character the fire drops becomes an ember
+const MAX_EMBERS = 420;
 const BACK = 0.55; // brightness of the room relative to the person, blended through a blurred mask
 const FACE = { x: 0.47, y: 0.42 }; // centre of the vignette, as a fraction of the frame
 
-type Phase = 0 | 1 | 2; // home, flying, regrowing
-
 type Cell = {
   i: number;
-  f: number;
-  loose: boolean;
+  col: number; // column within the portrait frame, 0 at its left edge
+  row: number;
   hx: number;
   hy: number;
-  phase: Phase;
-  t: number;
-  dwell: number;
-  life: number;
-  dc: number; // flying: whole cells travelled from home, across and down
-  dr: number;
-  every: number; // flying: seconds per step
-  wait: number;
-  trail: [number, number][]; // flying: the last cells it stood on
-  chNow: number;
-  alphaNow: number;
-  mutateAt: number;
   ix: number; // intro: where the cell starts, relative to home
   iy: number;
   id: number; // intro: delay before it sets off
+};
+
+// A character that has burnt off the edge. It moves on the grid, one cell at a time, slowing as
+// it goes, rising a little like an ember, and leaves a short trail in the cells it has just left.
+type Ember = {
+  col: number;
+  row: number;
+  g: number;
+  a: number;
+  t: number;
+  life: number;
+  every: number;
+  wait: number;
+  steps: number;
+  trail: [number, number][];
+  id: number; // intro delay of the cell it came from
 };
 
 type Grid = { lum: Float32Array; mask: Float32Array; extra: Float32Array; wide?: Float32Array };
@@ -148,8 +160,12 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
     let rows = 0;
     let pCols = 0;
     let pLeft = 0;
-    let cells: Cell[] = [];
-    let loose: Cell[] = [];
+    let cells: Cell[] = []; // every cell of the frame, indexed like the tone arrays
+    let embers: Ember[] = [];
+    let span = new Float32Array(0); // per row: the depth of the burning band, in cells
+    let fuel = new Int16Array(0); // per row: the first column that is always fuel
+    let heat = new Float32Array(0); // per cell, in the burning band
+    let fireWait = 0;
     let sprites: HTMLCanvasElement[] = [];
     let tone = new Float32Array(0);
     let toneScale = new Float32Array(0); // vignette per cell, fixed
@@ -465,25 +481,41 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
       return Math.max(1, Math.min(rampText.length - 1, Math.round(t * (rampText.length - 1))));
     }
 
-    function detach(c: Cell) {
-      c.phase = 1;
-      c.t = 0;
-      c.life = 2.5 + Math.random() * 3.5;
-      const speed = (H / 900) * (50 + 190 * c.f) * (0.7 + Math.random() * 0.6); // px per second
-      c.every = Math.max(1 / 40, cellW / speed);
-      c.wait = 0;
-      c.dc = 0;
-      c.dr = 0;
-      c.trail = [];
-      const t = tone[c.i];
-      c.chNow = charFor(t);
-      c.alphaNow = 0.32 + 0.68 * t;
-      c.mutateAt = 0.15;
+    // One step of the fire. Right to left, so each cell reads its fuel-side neighbour's heat from
+    // this step, as in the original algorithm, which is what makes the tongues coherent.
+    function stepFire() {
+      for (let r = 0; r < rows; r++) {
+        const loss = ((HEAT - SHOW) / (REACH * span[r])) * 2; // mean loss per column is half this
+        for (let c = fuel[r] - 1; c >= 0; c--) {
+          // Heat comes from the next column in, usually from the row below, so flames rise.
+          const q = Math.random();
+          const from = Math.min(rows - 1, Math.max(0, r + (q < 0.34 ? 1 : q < 0.44 ? -1 : 0)));
+          const i = r * pCols + c;
+          const was = heat[i] >= SHOW;
+          heat[i] = Math.max(0, heat[from * pCols + c + 1] - Math.random() * loss);
+          if (was && heat[i] < SHOW && Math.random() < BURN_EMBERS) spawnEmber(cells[i]);
+        }
+      }
     }
 
-    function settle(c: Cell) {
-      c.phase = 0;
-      c.dwell = -Math.log(1 - Math.random()) * (6 - 5 * c.f);
+    function spawnEmber(c: Cell) {
+      if (embers.length >= MAX_EMBERS) return;
+      const t = tone[c.i];
+      if (t < 0.05) return;
+      embers.push({
+        col: c.col,
+        row: c.row,
+        g: Math.min(rampText.length - 1, charFor(t) + 3),
+        // An ember leaves the burning front as bright as the front itself.
+        a: 0.62 + 0.3 * Math.min(1, t * 2),
+        t: 0,
+        life: 0.9 + Math.random() * 1.5,
+        every: 1 / (10 + Math.random() * 18),
+        wait: 0,
+        steps: 0,
+        trail: [],
+        id: c.id,
+      });
     }
 
     function build(family: string) {
@@ -534,11 +566,15 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
       poseLum = new Float32Array(n);
       poseMask = new Float32Array(n);
       cells = [];
-      loose = [];
+      embers = [];
+      span = new Float32Array(rows);
+      fuel = new Int16Array(rows);
+      heat = new Float32Array(rows * pCols);
       const looseCols = pCols * LOOSE_SPAN;
       for (let r = 0; r < rows; r++) {
-        // The frayed band is not a straight line: its depth wanders with the row.
-        const span = looseCols * (0.7 + 0.6 * noise(r * 0.11, 3.7));
+        // The burning band is not a straight line either: its depth wanders with the row.
+        span[r] = looseCols * (0.7 + 0.6 * noise(r * 0.11, 3.7));
+        fuel[r] = Math.min(pCols - 1, Math.ceil(span[r]));
         const v = r / rows;
         for (let c = 0; c < pCols; c++) {
           const i = r * pCols + c;
@@ -548,52 +584,31 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
           const dist = Math.hypot((u - FACE.x) / 0.75, (v - FACE.y) / 0.95);
           toneScale[i] = 1 - 0.45 * smooth((dist - 0.25) / 0.8);
           dither[i] = (hash(c + 53, r + 211) - 0.5) * 0.07;
-          const f = c < span ? Math.pow(smooth(1 - c / span), 1.6) : 0;
-          // The closer to the edge, the more cells are simply gone.
-          if (f > 0 && hash(c + 101, r + 7) < f * 0.6) continue;
-          const canFly = f > 0.02;
-          const cell: Cell = {
-            i,
-            f: canFly ? f : 0,
-            loose: canFly,
-            hx: pLeft + c * cellW,
-            hy: r * cellH,
-            phase: 0,
-            t: 0,
-            dwell: 0,
-            life: 0,
-            dc: 0,
-            dr: 0,
-            every: 0,
-            wait: 0,
-            trail: [],
-            chNow: 0,
-            alphaNow: 0,
-            mutateAt: 0,
-            ix: 0,
-            iy: 0,
-            id: 0,
-          };
           // The face lands first, the room around it after, each cell from somewhere to its left.
           const person = N ? N.mask[i] : 0;
           const rA = hash(c + 17, r + 431);
           const rB = hash(c + 911, r + 29);
-          cell.id = person > 0.5 ? 0.05 + 0.55 * rA : 0.25 + 0.75 * rA + 0.2 * (1 - u);
-          cell.ix = -(0.04 + 0.3 * rB * rB) * W;
-          cell.iy = (hash(c + 5, r + 77) - 0.5) * cellH * 10;
-          cells.push(cell);
-          if (canFly) {
-            loose.push(cell);
-            cell.dwell = Math.random() * (6 - 5 * cell.f);
-          }
+          cells.push({
+            i,
+            col: c,
+            row: r,
+            hx: pLeft + c * cellW,
+            hy: r * cellH,
+            id: person > 0.5 ? 0.05 + 0.55 * rA : 0.25 + 0.75 * rA + 0.2 * (1 - u),
+            ix: -(0.04 + 0.3 * rB * rB) * W,
+            iy: (hash(c + 5, r + 77) - 0.5) * cellH * 10,
+          });
         }
       }
       shimmer = [];
       updateTone();
-      // Run the field forward so the edge is already shedding on the first frame, as if it always
-      // had been. The intro draws the picture in that state (see render), so nothing changes
-      // when the intro ends.
+      for (let i = 0; i < heat.length; i++) heat[i] = cells[i].col >= fuel[cells[i].row] ? HEAT : 0;
+      // Run the fire forward so embers are already in the air on the first frame, as if it had
+      // always been burning. The intro draws the picture in that state (see render), so nothing
+      // changes when the intro ends.
       if (!reduced) for (let k = 0; k < 240; k++) stepField(1 / 30);
+      else for (let k = 0; k < 60; k++) stepFire(); // a still frame of the fire, not a straight edge
+      if (reduced) embers = [];
       if (introT0 === -1) introT0 = time;
       else introT0 = -Infinity; // a rebuild after a resize draws the picture straight away
     }
@@ -848,45 +863,39 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
     function stepField(dt: number) {
       time += dt;
       const nt = time * 0.18;
-      for (const c of loose) {
-        if (c.phase === 0) {
-          c.dwell -= dt;
-          if (c.dwell <= 0) detach(c);
-        } else if (c.phase === 1) {
-          c.t += dt;
-          const x = c.hx + c.dc * cellW;
-          const y = c.hy + c.dr * cellH;
-          if (c.t >= c.life || x < -cellW || y < -cellH || y > H) {
-            c.phase = 2;
-            c.t = 0;
-            continue;
-          }
-          // One cell left per step; the noise field decides when it slips a row up or down.
-          c.wait += dt;
-          while (c.wait >= c.every) {
-            c.wait -= c.every;
-            c.trail.unshift([c.dc, c.dr]);
-            if (c.trail.length > 2) c.trail.pop();
-            c.dc--;
-            const drift = noise(x * 0.0045 + nt, y * 0.0045) - 0.5;
-            if (Math.random() < 0.05 + Math.abs(drift) * 0.5) c.dr += drift < 0 ? -1 : 1;
-          }
-          c.mutateAt -= dt;
-          if (c.mutateAt <= 0) {
-            c.mutateAt = 0.12 + Math.random() * 0.25;
-            const fade = c.t / c.life;
-            const target = c.chNow * (1 - fade * 0.7);
-            c.chNow = Math.max(1, Math.min(rampText.length - 1, Math.round(target + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.7 ? 0 : 1))));
-          }
-        } else {
-          c.t += dt;
-          if (c.t >= 0.4) settle(c);
+      fireWait += dt;
+      while (fireWait >= 1 / FIRE_HZ) {
+        fireWait -= 1 / FIRE_HZ;
+        stepFire();
+      }
+      for (let k = embers.length - 1; k >= 0; k--) {
+        const e = embers[k];
+        e.t += dt;
+        const x = pLeft + e.col * cellW;
+        if (e.t >= e.life || x < -cellW || e.row < 0 || e.row >= rows) {
+          embers.splice(k, 1);
+          continue;
+        }
+        // One cell left per step, each step a little slower than the last; it rises now and then,
+        // and the noise field decides when it slips a row the other way.
+        e.wait += dt;
+        const every = e.every * (1 + 1.8 * (e.t / e.life));
+        while (e.wait >= every) {
+          e.wait -= every;
+          e.trail.unshift([e.col, e.row]);
+          if (e.trail.length > 2) e.trail.pop();
+          e.col--;
+          const drift = noise(x * 0.0045 + nt, e.row * cellH * 0.0045) - 0.5;
+          if (Math.random() < 0.14) e.row--;
+          else if (Math.random() < Math.abs(drift) * 0.3) e.row += drift < 0 ? -1 : 1;
+          // It thins toward the lightest characters as it cools.
+          if (++e.steps % 3 === 0) e.g = Math.max(1, e.g - 1);
         }
       }
       shimmer = shimmer.filter((s) => s.until > time);
       while (shimmer.length < 36 && cells.length) {
         const cell = cells[(Math.random() * cells.length) | 0];
-        if (cell.loose || tone[cell.i] < 0.12) continue;
+        if (cell.col < fuel[cell.row] + 2 || tone[cell.i] < 0.12) continue;
         shimmer.push({ i: cell.i, ch: Math.random() < 0.5 ? -1 : 1, until: time + 0.08 + Math.random() * 0.2 });
       }
     }
@@ -903,41 +912,46 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
       const by = breathY * cellH;
       const it = time - introT0;
       // How far a cell's intro has got: 0 before it sets off, 1 once it has landed.
-      const landed = (c: Cell) => (it < INTRO_END ? smooth(clamp((it - c.id) / INTRO_DUR, 0, 1) * 1.6) : 1);
+      const landed = (id: number) => (it < INTRO_END ? smooth(clamp((it - id) / INTRO_DUR, 0, 1) * 1.6) : 1);
+      const flick = Math.floor(time * 11);
+      const top = rampText.length - 1;
       for (const c of cells) {
         const t = tone[c.i];
-        if (t < 0.035) continue;
-        let ch = charFor(t);
+        // Burnt where the fire's heat has dropped too low.
+        const h = c.col >= fuel[c.row] ? HEAT : heat[c.i];
+        if (h < SHOW) continue;
+        const warmth = (h - SHOW) / (HEAT - SHOW);
+        // The burning front glows, like the edge of burning paper: the closer a cell is to going
+        // out, the brighter and denser its character, whatever the picture is doing there.
+        const rim = 1 - smooth(warmth / 0.3);
+        if (t < 0.035 && rim < 0.2) continue;
+        let ch = Math.min(top, Math.max(rim > 0.2 ? 2 : 1, charFor(t) + Math.round(rim * 3)));
+        if (rim > 0 && hash(c.i + 7, flick) < 0.45 * rim) ch = Math.max(1, Math.min(top, ch + (hash(c.i, flick + 1) < 0.5 ? -1 : 1)));
         const d = shimmerAt.get(c.i);
         if (d !== undefined) ch = Math.max(1, Math.min(rampText.length - 1, ch + d));
-        const alpha = (0.32 + 0.68 * t) * (1 - 0.3 * c.f);
+        let alpha = (0.32 + 0.68 * t) * (0.5 + 0.5 * smooth(warmth * 1.4));
+        alpha += rim * (0.78 - alpha) * (0.75 + 0.25 * hash(c.i, flick + 2));
         // The figure breathes: the person's cells drift by a fraction of a cell, the room stays.
         const m = N ? N.mask[c.i] : 0;
         const x = c.hx + bx * m;
         const y = c.hy + by * m;
         if (it < INTRO_END) {
-          // The intro assembles the edge as it already is: a character that is off flying is not
-          // drawn at home, and one growing back fades in as it would anyway.
-          if (c.phase === 1) continue;
-          const regrow = c.phase === 2 ? smooth(c.t / 0.4) : 1;
           const p = clamp((it - c.id) / INTRO_DUR, 0, 1);
           if (p <= 0) continue;
           const e = 1 - Math.pow(1 - p, 3);
           // In flight the character is still noise; it only becomes the picture as it lands.
           const flying = p < 0.72 ? 1 + ((hash(c.i, Math.floor(it * 18)) * (rampText.length - 1)) | 0) : ch;
-          drawCell(x + Math.round((c.ix * (1 - e)) / cellW) * cellW, y + Math.round((c.iy * (1 - e)) / cellH) * cellH, flying, alpha * smooth(p * 1.6) * regrow);
+          drawCell(x + Math.round((c.ix * (1 - e)) / cellW) * cellW, y + Math.round((c.iy * (1 - e)) / cellH) * cellH, flying, alpha * smooth(p * 1.6));
           continue;
         }
-        if (c.phase === 0) drawCell(x, y, ch, alpha);
-        else if (c.phase === 2) drawCell(x, y, ch, alpha * smooth(c.t / 0.4));
+        drawCell(x, y, ch, alpha);
       }
-      for (const c of loose) {
-        if (c.phase !== 1) continue;
-        const k = c.t / c.life;
-        // A character already in flight appears as the part of the edge it came from lands.
-        const a = c.alphaNow * (1 - k * k) * (0.5 + 0.4 * c.f) * landed(c);
-        c.trail.forEach(([dc, dr], n) => drawCell(c.hx + dc * cellW, c.hy + dr * cellH, Math.max(1, c.chNow - 1 - n), a * (0.4 - n * 0.2)));
-        drawCell(c.hx + c.dc * cellW, c.hy + c.dr * cellH, c.chNow, a);
+      for (const e of embers) {
+        const k = e.t / e.life;
+        // An ember already in the air appears as the part of the edge it came from lands.
+        const a = e.a * Math.pow(1 - k, 1.5) * landed(e.id);
+        e.trail.forEach(([c, r], n) => drawCell(pLeft + c * cellW, r * cellH, Math.max(1, e.g - 1 - n), a * (0.4 - n * 0.2)));
+        drawCell(pLeft + e.col * cellW, e.row * cellH, e.g, a);
       }
       ctx.globalAlpha = 1;
     }
