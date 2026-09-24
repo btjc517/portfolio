@@ -6,7 +6,7 @@
 const { chromium } = require("playwright");
 
 const MAX_WEIGHT = 300;
-const WORDMARK_MIN = 600;
+const WORDMARK_MIN = 700;
 const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS } : undefined;
 
 (async () => {

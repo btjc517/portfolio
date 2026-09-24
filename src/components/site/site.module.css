@@ -851,9 +851,10 @@
   padding-inline: var(--pad);
   touch-action: pan-y;
 }
-.wordmark canvas {
-  display: block;
-  width: 100%;
+/* The canvas reaches past this box on every side (see wordmark.tsx), so the footer keeps its
+   distance: the room below the name is part of the gap before the footer line. */
+.wordmark {
+  margin-bottom: 64px;
 }
 .foot {
   display: flex;

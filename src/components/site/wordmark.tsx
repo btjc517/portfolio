@@ -7,11 +7,19 @@ import { WORDMARK_WEIGHT } from "./type";
 // The name set across the full width in characters: Geist rasterised at cell resolution,
 // coverage mapped to a density ramp. It resolves out of noise the first time it scrolls into
 // view; the pointer pushes cells aside, a whole cell at a time, and they spring back.
+//
+// The canvas is larger than the name: it reaches EXT rows above and below it and across the page
+// margins, and ignores the pointer so the links around it stay clickable. A pushed character can
+// move at most PUSH_ROWS / PUSH_COLS cells, always inside that room, so none is ever cut off at an
+// edge; and each cell of the grid shows one character, so pushed characters never stack.
 
 const RAMP = " .,:;-=+*"; // edges, by coverage
 const FILL = "=+*x#"; // the solid body of the letters, a slow texture
-const NOISE = "#%&*+=-/<>0123456789";
+const NOISE = "#%&*+=-/<>"; // intro and heat scramble; no digits, which read as stray numbers
 const ASPECT = 0.6;
+const EXT = 7; // rows of room above and below the name
+const PUSH_ROWS = 6; // furthest a character can be pushed, in rows
+const PUSH_COLS = 10; // and in columns
 
 type Cell = { x: number; y: number; cov: number; dx: number; dy: number; vx: number; vy: number; delay: number; heat: number; col: number; row: number };
 
@@ -23,17 +31,26 @@ function hash(x: number, y: number) {
 
 export function Wordmark({ text }: { text: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const canvasEl = ref.current;
-    if (!canvasEl) return;
+    const boxEl = boxRef.current;
+    if (!canvasEl || !boxEl) return;
     const canvas: HTMLCanvasElement = canvasEl;
+    const box: HTMLDivElement = boxEl;
     const ctx2d = canvas.getContext("2d");
     if (!ctx2d) return;
     const ctx: CanvasRenderingContext2D = ctx2d;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    let W = 0;
+    let W = 0; // width of the name's own box
+    let CW = 0; // width of the canvas, across the page margins
+    let colsAll = 0;
+    let rowsAll = 0;
+    let gx0 = 0; // x of grid column 0 in the canvas
+    let occA = new Float32Array(0); // per grid cell: alpha of the character drawn there this frame
+    let occS: (HTMLCanvasElement | null)[] = [];
     let dpr = 1;
     let cellW = 0;
     let cellH = 0;
@@ -68,7 +85,7 @@ export function Wordmark({ text }: { text: string }) {
     }
 
     function build() {
-      W = canvas.clientWidth;
+      W = box.clientWidth;
       if (!W) return;
       dpr = Math.min(2, window.devicePixelRatio || 1);
       // On a phone one line would be too thin to read, so the name breaks after the first word.
@@ -89,9 +106,24 @@ export function Wordmark({ text }: { text: string }) {
       const rows = Math.ceil((lineH * lines.length + (lines.length > 1 ? desc * 0.4 : 0)) / cellH) + 1;
       const H = rows * cellH;
 
-      canvas.style.height = `${H}px`;
-      canvas.width = Math.round(W * dpr);
-      canvas.height = Math.round(H * dpr);
+      // The name's box keeps the name's height; the canvas adds EXT rows above and below and
+      // spans the page margins either side.
+      box.style.height = `${H}px`;
+      const inset = box.getBoundingClientRect().left - (box.parentElement?.getBoundingClientRect().left ?? 0);
+      CW = W + 2 * inset;
+      const CH = H + 2 * EXT * cellH;
+      // The canvas is positioned in the box's parent, the full-width .wordmark, from its left edge.
+      canvas.style.left = "0px";
+      canvas.style.width = `${CW}px`;
+      canvas.style.top = `${-EXT * cellH}px`;
+      canvas.style.height = `${CH}px`;
+      canvas.width = Math.round(CW * dpr);
+      canvas.height = Math.round(CH * dpr);
+      gx0 = (inset + (W - cols * cellW) / 2) % cellW;
+      colsAll = Math.ceil((CW - gx0) / cellW);
+      rowsAll = rows + 2 * EXT;
+      occA = new Float32Array(colsAll * rowsAll);
+      occS = new Array(colsAll * rowsAll).fill(null);
 
       const r = document.createElement("canvas");
       r.width = Math.ceil(cols * cellW);
@@ -103,7 +135,7 @@ export function Wordmark({ text }: { text: string }) {
       lines.forEach((l, k) => g.fillText(l, (ms[k].actualBoundingBoxLeft / 100) * fs, cellH * 0.5 + asc + k * lineH));
       const data = g.getImageData(0, 0, r.width, r.height).data;
 
-      const ox = (W - cols * cellW) / 2;
+      const ox = inset + (W - cols * cellW) / 2;
       cells = [];
       for (let row = 0; row < rows; row++) {
         for (let c = 0; c < cols; c++) {
@@ -121,7 +153,7 @@ export function Wordmark({ text }: { text: string }) {
           }
           const cov = n ? sum / n / 255 : 0;
           if (cov < 0.06) continue;
-          cells.push({ x: ox + c * cellW, y: row * cellH, cov, dx: 0, dy: 0, vx: 0, vy: 0, delay: (c / cols) * 0.9 + Math.random() * 0.35, heat: 0, col: c, row });
+          cells.push({ x: ox + c * cellW, y: (row + EXT) * cellH, cov, dx: 0, dy: 0, vx: 0, vy: 0, delay: (c / cols) * 0.9 + Math.random() * 0.35, heat: 0, col: c, row });
         }
       }
       sprites = glyphs(RAMP);
@@ -131,6 +163,8 @@ export function Wordmark({ text }: { text: string }) {
 
     function render() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      occA.fill(0);
+      occS.fill(null);
       const it = time - introAt;
       for (const c of cells) {
         let alpha: number;
@@ -151,11 +185,21 @@ export function Wordmark({ text }: { text: string }) {
           if (p < 0.8) s = noise[(Math.random() * noise.length) | 0];
         }
         if (c.heat > 0.15 && Math.random() < c.heat) s = noise[(Math.random() * noise.length) | 0];
-        ctx.globalAlpha = alpha;
-        // Pushed cells jump from cell to cell rather than sliding, so the name stays on its grid.
-        const gx = c.x + Math.round(c.dx / cellW) * cellW;
-        const gy = c.y + Math.round(c.dy / cellH) * cellH;
-        ctx.drawImage(s, Math.round(gx * dpr) - 1, Math.round(gy * dpr));
+        // Pushed cells jump from cell to cell rather than sliding, within the room the canvas has.
+        const col = Math.round((c.x - gx0) / cellW) + Math.max(-PUSH_COLS, Math.min(PUSH_COLS, Math.round(c.dx / cellW)));
+        const row = Math.round(c.y / cellH) + Math.max(-PUSH_ROWS, Math.min(PUSH_ROWS, Math.round(c.dy / cellH)));
+        if (col < 0 || col >= colsAll || row < 0 || row >= rowsAll) continue;
+        // One character per cell: where two land on the same cell, the stronger one shows.
+        const k = row * colsAll + col;
+        if (alpha <= occA[k]) continue;
+        occA[k] = alpha;
+        occS[k] = s;
+      }
+      for (let k = 0; k < occS.length; k++) {
+        const s = occS[k];
+        if (!s) continue;
+        ctx.globalAlpha = occA[k];
+        ctx.drawImage(s, Math.round((gx0 + (k % colsAll) * cellW) * dpr) - 1, Math.round(Math.floor(k / colsAll) * cellH * dpr));
       }
       ctx.globalAlpha = 1;
     }
@@ -171,7 +215,7 @@ export function Wordmark({ text }: { text: string }) {
           const ey = c.y + cellH / 2 - pointer.y;
           const d = Math.hypot(ex, ey);
           if (d < R && d > 0.001) {
-            const f = Math.pow(1 - d / R, 2) * 5200;
+            const f = Math.pow(1 - d / R, 2) * 5200 * (cellH / 11.7);
             fx += (ex / d) * f;
             fy += (ey / d) * f;
             c.heat = Math.min(1, c.heat + dt * 6 * (1 - d / R));
@@ -208,7 +252,7 @@ export function Wordmark({ text }: { text: string }) {
       { rootMargin: "0px 0px -12% 0px" },
     );
     const ro = new ResizeObserver(() => {
-      if (canvas.clientWidth === W) return;
+      if (box.clientWidth === W) return;
       build();
       render();
     });
@@ -216,7 +260,7 @@ export function Wordmark({ text }: { text: string }) {
       const r = canvas.getBoundingClientRect();
       pointer.x = e.clientX - r.left;
       pointer.y = e.clientY - r.top;
-      pointer.on = true;
+      pointer.on = pointer.x >= 0 && pointer.y >= 0 && pointer.x <= r.width && pointer.y <= r.height;
     };
     const leave = () => (pointer.on = false);
     const onVis = () => start();
@@ -232,11 +276,11 @@ export function Wordmark({ text }: { text: string }) {
       if (cancelled) return;
       build();
       render();
-      io.observe(canvas);
-      ro.observe(canvas);
-      canvas.addEventListener("pointermove", move);
-      canvas.addEventListener("pointerleave", leave);
-      canvas.addEventListener("pointercancel", leave);
+      io.observe(box);
+      ro.observe(box);
+      window.addEventListener("pointermove", move, { passive: true });
+      document.documentElement.addEventListener("pointerleave", leave);
+      window.addEventListener("pointercancel", leave);
       document.addEventListener("visibilitychange", onVis);
     })();
 
@@ -256,12 +300,23 @@ export function Wordmark({ text }: { text: string }) {
       visible = false;
       io.disconnect();
       ro.disconnect();
-      canvas.removeEventListener("pointermove", move);
-      canvas.removeEventListener("pointerleave", leave);
-      canvas.removeEventListener("pointercancel", leave);
+      window.removeEventListener("pointermove", move);
+      document.documentElement.removeEventListener("pointerleave", leave);
+      window.removeEventListener("pointercancel", leave);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [text]);
 
-  return <canvas ref={ref} role="img" aria-label={text} data-weight={WORDMARK_WEIGHT} />;
+  return (
+    <>
+      <div ref={boxRef} role="img" aria-label={text} />
+      <canvas
+        ref={ref}
+        aria-hidden="true"
+        data-weight={WORDMARK_WEIGHT}
+        data-ext={EXT}
+        style={{ position: "absolute", display: "block", pointerEvents: "none" }}
+      />
+    </>
+  );
 }
