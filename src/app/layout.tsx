@@ -1,78 +1,63 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
-import { Inter } from "next/font/google";
-import { RESUME_DATA } from "@/data/resume-data";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { person } from "@/data/cv";
 import { PostHogProvider, ThemeProvider } from "./providers";
 
 import "./globals.css";
 import React from "react";
 
-// Updated Metadata for better SEO
+const title = `${person.name}, ${person.role} at ${person.company}`;
+const description =
+  "Ben Cheesebrough builds AI systems that hold up against real data. Founding Technical Lead at ImpactOS, final year of AI and Computer Science at the University of Birmingham, based in London.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(RESUME_DATA.personalWebsiteUrl), // Set the base URL
+  metadataBase: new URL(person.site),
   title: {
-    default: `${RESUME_DATA.name} | ${RESUME_DATA.about}`,
-    template: `%s | ${RESUME_DATA.name}`,
+    default: title,
+    template: `%s | ${person.name}`,
   },
-  description: RESUME_DATA.summary,
-  keywords: [
-    "AI Researcher",
-    "Generative AI",
-    "Portfolio",
-    RESUME_DATA.name,
-    ...Object.values(RESUME_DATA.skills).flat(),
-  ],
+  description,
+  keywords: [person.name, "ImpactOS", "AI engineer", "Founding engineer", "London", "University of Birmingham", "CV"],
+  authors: [{ name: person.name, url: person.site }],
   openGraph: {
-    title: {
-      default: `${RESUME_DATA.name} | ${RESUME_DATA.about}`,
-      template: `%s | ${RESUME_DATA.name}`,
-    },
-    description: RESUME_DATA.summary,
-    url: RESUME_DATA.personalWebsiteUrl,
-    siteName: RESUME_DATA.name,
-    images: [
-      {
-        url: "/website_ss.png", // Updated to use website_ss.png
-        width: 1200,
-        height: 630,
-        alt: `${RESUME_DATA.name} - ${RESUME_DATA.about}`,
-      },
-    ],
-    locale: "en_US",
-    type: "website",
+    title,
+    description,
+    url: person.site,
+    siteName: person.name,
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${person.name}, drawn in characters` }],
+    locale: "en_GB",
+    type: "profile",
   },
   twitter: {
     card: "summary_large_image",
-    title: {
-      default: `${RESUME_DATA.name} | ${RESUME_DATA.about}`,
-      template: `%s | ${RESUME_DATA.name}`,
-    },
-    description: RESUME_DATA.summary,
-    creator: "@ruixen",
-    images: ["/website_ss.png"],
+    title,
+    description,
+    images: ["/og.jpg"],
   },
   alternates: {
-    canonical: RESUME_DATA.personalWebsiteUrl,
+    canonical: person.site,
   },
 };
 
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-});
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f4f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
+  ],
+  colorScheme: "dark light",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.className} light`} suppressHydrationWarning>
+    <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <head>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
-        />
+        {/* Motion that starts hidden only does so when scripts run, so the page reads without them. */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
       </head>
       <body>
         <ThemeProvider>

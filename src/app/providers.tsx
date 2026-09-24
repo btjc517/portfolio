@@ -10,7 +10,9 @@ import { PostHogProvider as PHProvider } from "posthog-js/react";
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
+    const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    if (!key) return;
+    posthog.init(key, {
       api_host:
         process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
       person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well
@@ -33,7 +35,7 @@ function PostHogPageView() {
 
   // Track pageviews
   useEffect(() => {
-    if (pathname && posthog) {
+    if (pathname && posthog && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
       let url = window.origin + pathname;
       if (searchParams.toString()) {
         url = url + "?" + searchParams.toString();
@@ -60,7 +62,7 @@ function SuspendedPostHogPageView() {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
-      attribute="class"
+      attribute="data-theme"
       defaultTheme="system"
       enableSystem={true}
       disableTransitionOnChange
