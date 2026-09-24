@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { education, person, profile, projects, roles, toolkit } from "@/data/cv";
+import { NAME_TRACKING, NAME_WEIGHT } from "@/components/site/type";
 import s from "./cv.module.css";
 
 // The CV as a single A4 page, from the same data as the site. scripts/site/make-cv-pdf.cjs
@@ -16,7 +17,9 @@ export default function CvPage() {
       <article className={s.sheet}>
         <header className={s.head}>
           <div>
-            <h1 className={s.name}>{person.name}</h1>
+            <h1 className={s.name} style={{ fontWeight: NAME_WEIGHT, letterSpacing: `${NAME_TRACKING}em` }}>
+              {person.name}
+            </h1>
             <p className={s.line}>
               {person.role} at {person.company}. Final year, B.Sc. Artificial Intelligence and Computer Science, University of Birmingham.
             </p>

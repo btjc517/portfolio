@@ -8,6 +8,7 @@ import { Reveals } from "@/components/site/reveals";
 import { EducationSection, RailHead, WorkSection } from "@/components/site/staged";
 import { Statement } from "@/components/site/statement";
 import { ThemeToggle } from "@/components/site/theme-toggle";
+import { NAME_TRACKING, NAME_WEIGHT } from "@/components/site/type";
 import { Wordmark } from "@/components/site/wordmark";
 import s from "@/components/site/site.module.css";
 
@@ -41,7 +42,7 @@ export default function Home() {
               <span className={s.dot} aria-hidden="true" />
               {person.role} at {person.company}
             </p>
-            <h1 className={s.name} aria-label={person.name}>
+            <h1 className={s.name} aria-label={person.name} style={{ fontWeight: NAME_WEIGHT, letterSpacing: `${NAME_TRACKING}em` }}>
               <span className={s.nameLine} aria-hidden="true">
                 <span className={s.rise} style={{ ["--i" as string]: 0 }}>
                   {person.first}

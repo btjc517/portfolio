@@ -270,9 +270,8 @@
 .name {
   margin: 22px 0 26px;
   font-size: clamp(60px, 7.3vw, 136px);
-  font-weight: 400;
+  /* Weight and tracking come from components/site/type.ts. */
   line-height: 0.88;
-  letter-spacing: -0.048em;
   margin-left: -0.05em;
 }
 .nameLine {

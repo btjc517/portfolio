@@ -59,8 +59,7 @@
 .name {
   font-size: 25pt;
   line-height: 0.95;
-  font-weight: 560;
-  letter-spacing: -0.045em;
+  /* Weight and tracking come from components/site/type.ts. */
   margin-left: -0.04em !important;
 }
 .line {
