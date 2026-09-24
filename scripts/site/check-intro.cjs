@@ -8,12 +8,15 @@
 // Set PW_CHROME to a Chrome binary if Playwright's bundled one is missing.
 const { chromium } = require("playwright");
 
-const SECONDS = 6.5;
+const SECONDS = 10.5;
 // Largest allowed loss of band ink from one frame to the next. The bug this guards against
 // (every loose character leaving at once when the intro ended) measured 31 to 35%; the intended
 // resolve from noise into the picture measures up to about 11% on a busy machine at 28fps.
 const MAX_DROP = 0.18;
-const MAX_SETTLE = 0.2; // largest allowed change in average edge ink from just after the intro to later
+// Largest allowed change in average edge ink from just after the intro to later. The edge's tall,
+// slow shapes swing its ink by up to 25% between single seconds on their own, so the check compares
+// two seconds just after the intro with four seconds from 6 to 10 s.
+const MAX_SETTLE = 0.2;
 
 // VERCEL_BYPASS, when set, is sent as Vercel's protection bypass header so a protected preview
 // can be checked. It is read from the environment and never printed.
@@ -70,17 +73,17 @@ const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": proce
     const ok = worst <= MAX_DROP;
     if (!ok) failed++;
     console.log(`${viewport.width}px: ${band.length} frames, worst one-frame drop ${(worst * 100).toFixed(1)}% of peak at ${at.toFixed(2)}s ${ok ? "ok" : "FAIL"}`);
-    // The intro ends 2.2s after the portrait first draws; compare the second after that with 5 to 6s.
+    // The intro ends 2.2s after the portrait first draws.
     const mean = (a, b) => {
       const v = band.filter(([t]) => t >= a && t < b).map(([, x]) => x);
       return v.reduce((s, x) => s + x, 0) / Math.max(1, v.length);
     };
-    const early = mean(2.6, 3.6);
-    const late = mean(5, 6);
+    const early = mean(2.6, 4.6);
+    const late = mean(6, 10);
     const settle = Math.abs(early - late) / Math.max(early, late);
     const ok2 = settle <= MAX_SETTLE;
     if (!ok2) failed++;
-    console.log(`${viewport.width}px: edge ink just after the intro vs 5 to 6s later differs by ${(settle * 100).toFixed(1)}% ${ok2 ? "ok" : "FAIL"}`);
+    console.log(`${viewport.width}px: edge ink 2.6 to 4.6s vs 6 to 10s differs by ${(settle * 100).toFixed(1)}% ${ok2 ? "ok" : "FAIL"}`);
     if (process.env.TRACE) console.log(band.filter((_, k) => k % 6 === 0).map(([t, v]) => `${t.toFixed(2)}:${Math.round((v / peak) * 100)}`).join(" "));
     await p.close();
   }
