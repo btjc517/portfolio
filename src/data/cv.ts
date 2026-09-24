@@ -11,12 +11,19 @@ export const person = {
   company: "ImpactOS",
   location: "London, UK",
   raised: "Dubai, UAE",
-  email: "ben.cheesebrough@gmail.com",
+  email: "benjy.cheesebrough@gmail.com",
   linkedin: "https://www.linkedin.com/in/ben-cheesebrough-12b18b220/",
   cv: "/BenCheesebrough-CV.pdf",
   site: "https://bencheesebrough.com",
   line: "I build AI systems that hold up against real data.",
+  /** Printed on the PDF CV only. */
+  phone: "+44 7379 017770",
+  siteLabel: "bencheesebrough.com",
+  linkedinLabel: "linkedin.com/in/ben-cheesebrough",
 };
+
+export const profile =
+  "I lead the technology at ImpactOS, an AI platform that turns messy ESG and social value data into audit-ready reports. I designed it and shipped the first version alone. Before that I co-founded a software company in Riyadh. I'm in my final year of AI and Computer Science at Birmingham, and I run a fleet of coding agents across three machines on tooling I wrote myself.";
 
 export type Role = {
   id: string;

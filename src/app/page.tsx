@@ -1,4 +1,4 @@
-import { education, person, projects, roles, toolkit } from "@/data/cv";
+import { education, person, profile as PROFILE, projects, roles, toolkit } from "@/data/cv";
 import { Clock } from "@/components/site/clock";
 import { ArrowDown, ArrowUpRight } from "@/components/site/icons";
 import { Miniature } from "@/components/site/miniature";
@@ -10,8 +10,6 @@ import { Statement } from "@/components/site/statement";
 import { Wordmark } from "@/components/site/wordmark";
 import s from "@/components/site/site.module.css";
 
-const PROFILE =
-  "I lead the technology at ImpactOS, an AI platform that turns messy ESG and social value data into audit-ready reports. I designed it and shipped the first version alone. Before that I co-founded a software company in Riyadh. I'm in my final year of AI and Computer Science at Birmingham, and I run a fleet of coding agents across three machines on tooling I wrote myself.";
 
 function Rail(props: { n: string; label: string; count?: number }) {
   return (

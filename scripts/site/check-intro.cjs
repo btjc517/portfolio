@@ -1,0 +1,70 @@
+// Regression check for the portrait intro: the frayed left edge must thin out gradually, never
+// lose a large share of its characters between two frames. Samples the ink in that band every
+// animation frame for the first seconds after load.
+// Usage: NODE_PATH=$PWD/node_modules node scripts/site/check-intro.cjs [url]
+// Set PW_CHROME to a Chrome binary if Playwright's bundled one is missing.
+const { chromium } = require("playwright");
+
+const SECONDS = 6;
+// Largest allowed loss of band ink from one frame to the next. The bug this guards against
+// (every loose character leaving at once when the intro ended) measured 31 to 35%; the intended
+// resolve from noise into the picture measures up to about 11% on a busy machine at 28fps.
+const MAX_DROP = 0.18;
+
+(async () => {
+  const url = process.argv[2] || "http://localhost:3110/";
+  const b = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
+  let failed = 0;
+  // Desktop sizes only: on a phone the portrait is cropped and its frayed edge is off-screen.
+  for (const viewport of [{ width: 1512, height: 945 }, { width: 1920, height: 1080 }]) {
+    const p = await b.newPage({ viewport, deviceScaleFactor: 2 });
+    await p.addInitScript((seconds) => {
+      const out = (window.__band = []);
+      const small = document.createElement("canvas");
+      const sctx = small.getContext("2d", { willReadFrequently: true });
+      let t0 = 0;
+      const tick = (now) => {
+        const c = document.querySelector('canvas[aria-label^="Portrait"]');
+        if (c && c.width) {
+          if (!t0) t0 = now;
+          // The portrait is right-aligned; its frame is the photo's crop aspect times the height.
+          const H = c.height;
+          const frameW = Math.min(c.width, H * (375 / (500 * 0.88)));
+          const x0 = c.width - frameW;
+          const bw = frameW * 0.14; // the outer part of the fray, where most characters come loose
+          small.width = 60;
+          small.height = 160;
+          sctx.drawImage(c, x0, 0, bw, H, 0, 0, 60, 160);
+          const d = sctx.getImageData(0, 0, 60, 160).data;
+          // Ink above the ground colour (#0b0b0c), so the dark background does not count.
+          let ink = 0;
+          for (let k = 0; k < d.length; k += 4) ink += Math.max(0, d[k] - 12);
+          out.push([(now - t0) / 1000, ink]);
+        }
+        if (!t0 || now - t0 < seconds * 1000) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, SECONDS);
+    await p.goto(url, { waitUntil: "domcontentloaded" });
+    await p.waitForTimeout((SECONDS + 3) * 1000);
+    const band = await p.evaluate(() => window.__band);
+    // Only judge once the edge has mostly arrived; before that the ink is still rising.
+    const peak = Math.max(...band.map(([, v]) => v));
+    let worst = 0;
+    let at = 0;
+    for (let k = 1; k < band.length; k++) {
+      const [t, v] = band[k];
+      const prev = band[k - 1][1];
+      if (prev < peak * 0.5) continue;
+      const drop = (prev - v) / peak;
+      if (drop > worst) (worst = drop), (at = t);
+    }
+    const ok = worst <= MAX_DROP;
+    if (!ok) failed++;
+    console.log(`${viewport.width}px: ${band.length} frames, worst one-frame drop ${(worst * 100).toFixed(1)}% of peak at ${at.toFixed(2)}s ${ok ? "ok" : "FAIL"}`);
+    if (process.env.TRACE) console.log(band.filter((_, k) => k % 6 === 0).map(([t, v]) => `${t.toFixed(2)}:${Math.round((v / peak) * 100)}`).join(" "));
+    await p.close();
+  }
+  await b.close();
+  process.exit(failed ? 1 : 0);
+})();

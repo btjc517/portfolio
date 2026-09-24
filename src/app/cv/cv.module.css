@@ -1,0 +1,258 @@
+/* One A4 page. On screen it sits on a grey desk; printed, it is the whole page. */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+.desk {
+  min-height: 100vh;
+  padding: 32px 16px;
+  background: #e9e8e4;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sheet {
+  --ink: #111112;
+  --ink-2: #4a4a4d;
+  --ink-3: #8a8a8e;
+  --line: #dddcd8;
+  --accent: #ff5b1f;
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto;
+  padding: 12mm 14mm 10mm;
+  background: #fff;
+  color: var(--ink);
+  font-size: 8.1pt;
+  line-height: 1.38;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+.sheet a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sheet h1,
+.sheet h2,
+.sheet h3,
+.sheet p,
+.sheet ul,
+.sheet dl,
+.sheet dd {
+  margin: 0;
+  padding: 0;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10mm;
+  padding-bottom: 5mm;
+  border-bottom: 1px solid var(--ink);
+}
+.name {
+  font-size: 25pt;
+  line-height: 0.95;
+  font-weight: 560;
+  letter-spacing: -0.045em;
+  margin-left: -0.04em !important;
+}
+.line {
+  margin-top: 3mm !important;
+  max-width: 100mm;
+  color: var(--ink-2);
+  font-size: 9pt;
+}
+.contact {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 4mm;
+  row-gap: 0.2mm;
+  font-size: 7.8pt;
+  white-space: nowrap;
+}
+.contact dt {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6.6pt;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: 0.5pt;
+}
+
+.cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 50mm;
+  column-gap: 9mm;
+  padding-top: 4mm;
+}
+.main,
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
+}
+.side {
+  padding-left: 6mm;
+  border-left: 1px solid var(--line);
+}
+
+.label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6.8pt;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding-bottom: 1.6mm;
+  margin-bottom: 2.4mm !important;
+  border-bottom: 1px solid var(--line);
+}
+.meta {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6.8pt;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.now {
+  display: inline-block;
+  width: 4pt;
+  height: 4pt;
+  margin-right: 4pt;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 0.5pt;
+}
+
+.profile {
+  font-size: 8.8pt;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.role + .role {
+  margin-top: 2.4mm;
+}
+.roleHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4mm;
+}
+.roleHead h3,
+.project h3 {
+  font-size: 9.2pt;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+.roleHead h3 span,
+.project h3 span {
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-left: 1.5mm;
+}
+.summary {
+  color: var(--ink-2);
+  margin-top: 0.4mm !important;
+}
+.points {
+  list-style: none;
+  margin-top: 1mm !important;
+}
+.points li {
+  position: relative;
+  padding-left: 3.4mm;
+}
+.points li + li {
+  margin-top: 0.5mm;
+}
+.points li::before {
+  content: "";
+  position: absolute;
+  left: 0.6mm;
+  top: 0.62em;
+  width: 1.4mm;
+  height: 1px;
+  background: var(--ink-3);
+}
+
+.band {
+  padding-top: 3.2mm;
+  margin-top: auto;
+}
+.projects {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3mm 5mm;
+}
+.project h3 span {
+  display: block;
+  margin-left: 0;
+  font-size: 8pt;
+}
+.project p {
+  color: var(--ink-2);
+  margin-top: 0.4mm !important;
+}
+.stack {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6.6pt;
+  color: var(--ink-3) !important;
+}
+
+.edu + .edu {
+  margin-top: 2.4mm;
+}
+.edu h3 {
+  font-size: 8.8pt;
+  font-weight: 560;
+}
+.edu p {
+  color: var(--ink-2);
+}
+.edu .meta {
+  margin-top: 0.3mm !important;
+}
+.note {
+  color: var(--ink-2);
+  font-size: 7.8pt;
+}
+.note + .note {
+  margin-top: 1.4mm !important;
+}
+.tool + .tool {
+  margin-top: 2mm;
+}
+.tool p {
+  color: var(--ink-2);
+  margin-top: 0.3mm !important;
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 3mm;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6.6pt;
+  letter-spacing: 0.03em;
+  color: var(--ink-3);
+}
+
+@media print {
+  .desk {
+    padding: 0;
+    background: #fff;
+  }
+  .sheet {
+    box-shadow: none;
+  }
+}

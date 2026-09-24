@@ -21,6 +21,7 @@ const VIDEO = "/cv/portrait.mp4";
 const VIDEO_WAIT = 4000; // ms to wait for the clip before giving up on it
 const INTRO_DUR = 0.85; // seconds each cell takes to land
 const INTRO_END = 2.2; // seconds after which the intro is over for every cell
+const FRAY_IN = 3.2; // seconds over which the edge starts shedding once the intro is over
 const SRC_W = 375;
 const SRC_H = 500;
 const CROP = { x0: 0, y0: 0.12, x1: 1, y1: 1 };
@@ -487,6 +488,7 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
     }
 
     function build(family: string) {
+      const introPlays = introT0 === -1;
       // Size from the stage, so the portrait can fill a hero section as well as the viewport.
       W = stage.clientWidth || window.innerWidth;
       H = stage.clientHeight || window.innerHeight;
@@ -584,14 +586,19 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
           cells.push(cell);
           if (canFly) {
             loose.push(cell);
-            cell.dwell = Math.random() * (6 - 5 * cell.f);
+            // With the intro, every edge character stays in place until it has landed, then they
+            // start coming loose one by one over FRAY_IN seconds, so the edge thins out gradually
+            // instead of losing most of its characters in one frame when the intro ends.
+            cell.dwell = introPlays ? INTRO_END + Math.random() * FRAY_IN : Math.random() * (6 - 5 * cell.f);
           }
         }
       }
       shimmer = [];
       updateTone();
       // Run the field forward so the first frame already has a drift.
-      if (!reduced) for (let k = 0; k < 240; k++) stepField(1 / 30);
+      // Without the intro (a rebuild after a resize), run the field forward so the edge already
+      // has its drift on the first frame.
+      if (!reduced && !introPlays) for (let k = 0; k < 240; k++) stepField(1 / 30);
       if (introT0 === -1) introT0 = time;
       else introT0 = -Infinity; // a rebuild after a resize draws the picture straight away
     }
