@@ -121,31 +121,6 @@
   font-weight: 400;
   transition: opacity 0.4s var(--ease);
 }
-.themeBtn {
-  all: unset;
-  box-sizing: border-box;
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid var(--line-2);
-  color: var(--ink-2);
-  cursor: pointer;
-  transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
-}
-.themeBtn:hover {
-  color: var(--ink);
-  border-color: color-mix(in srgb, var(--ink) 40%, transparent);
-}
-.themeBtn:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 3px;
-}
-.themeBtn svg {
-  width: 14px;
-  height: 14px;
-}
 .navLinks {
   display: flex;
   align-items: center;
@@ -893,6 +868,34 @@
 .foot a:hover {
   color: var(--ink);
 }
+.footEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+}
+/* The theme switch, set like the footer's other links: an icon and a label, no outline. */
+.themeBtn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  color: inherit;
+  transition: color 0.25s var(--ease);
+}
+.themeBtn:hover {
+  color: var(--ink);
+}
+.themeBtn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+.themeBtn svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
 
 /* ---- motion -------------------------------------------------------------- */
 
@@ -1068,5 +1071,9 @@
   .foot {
     flex-direction: column;
     gap: 6px;
+  }
+  .footEnd {
+    justify-content: space-between;
+    margin-top: 10px;
   }
 }

@@ -7,6 +7,7 @@ import { Portrait } from "@/components/site/portrait";
 import { Reveals } from "@/components/site/reveals";
 import { EducationSection, RailHead, WorkSection } from "@/components/site/staged";
 import { Statement } from "@/components/site/statement";
+import { ThemeToggle } from "@/components/site/theme-toggle";
 import { Wordmark } from "@/components/site/wordmark";
 import s from "@/components/site/site.module.css";
 
@@ -200,7 +201,10 @@ export default function Home() {
       <footer className={`${s.foot} ${s.mono}`} style={{ marginInline: "var(--pad)" }}>
         <span>© {year} {person.name}</span>
         <span>Portrait redrawn in characters from a living photograph, every frame</span>
-        <a href="#top">Back to top ↑</a>
+        <span className={s.footEnd}>
+          <ThemeToggle />
+          <a href="#top">Back to top ↑</a>
+        </span>
       </footer>
       <Reveals />
     </div>
