@@ -11,13 +11,17 @@ const SECONDS = 6;
 // resolve from noise into the picture measures up to about 11% on a busy machine at 28fps.
 const MAX_DROP = 0.18;
 
+// VERCEL_BYPASS, when set, is sent as Vercel's protection bypass header so a protected preview
+// can be checked. It is read from the environment and never printed.
+const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS } : undefined;
+
 (async () => {
   const url = process.argv[2] || "http://localhost:3110/";
   const b = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
   let failed = 0;
   // Desktop sizes only: on a phone the portrait is cropped and its frayed edge is off-screen.
   for (const viewport of [{ width: 1512, height: 945 }, { width: 1920, height: 1080 }]) {
-    const p = await b.newPage({ viewport, deviceScaleFactor: 2 });
+    const p = await b.newPage({ viewport, deviceScaleFactor: 2 , extraHTTPHeaders: bypass });
     await p.addInitScript((seconds) => {
       const out = (window.__band = []);
       const small = document.createElement("canvas");

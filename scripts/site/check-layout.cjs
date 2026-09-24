@@ -3,12 +3,16 @@
 // Usage: NODE_PATH=$PWD/node_modules node scripts/site/check-layout.cjs [url]
 const { chromium } = require("playwright");
 
+// VERCEL_BYPASS, when set, is sent as Vercel's protection bypass header so a protected preview
+// can be checked. It is read from the environment and never printed.
+const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS } : undefined;
+
 (async () => {
   const url = process.argv[2] || "http://localhost:3110/";
   const b = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
   let failed = 0;
   for (const [w, h] of [[320, 640], [375, 667], [390, 844], [768, 1024], [1280, 800], [1512, 945]]) {
-    const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: w < 800, hasTouch: w < 800 });
+    const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: w < 800, hasTouch: w < 800 , extraHTTPHeaders: bypass });
     await p.goto(url, { waitUntil: "networkidle" });
     await p.waitForTimeout(800);
     const r = await p.evaluate(() => {

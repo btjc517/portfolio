@@ -3,12 +3,16 @@
 // Set PW_CHROME to a Chrome binary if Playwright's bundled one is missing.
 const { chromium } = require("playwright");
 
+// VERCEL_BYPASS, when set, is sent as Vercel's protection bypass header so a protected preview
+// can be checked. It is read from the environment and never printed.
+const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS } : undefined;
+
 (async () => {
   const url = process.argv[2] || "http://localhost:3110/";
   const b = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
   let failed = 0;
   for (const viewport of [{ width: 1512, height: 945 }, { width: 390, height: 844 }]) {
-    const p = await b.newPage({ viewport });
+    const p = await b.newPage({ viewport , extraHTTPHeaders: bypass });
     await p.goto(url, { waitUntil: "networkidle" });
     await p.locator("#work").scrollIntoViewIfNeeded();
     await p.waitForTimeout(1500);
