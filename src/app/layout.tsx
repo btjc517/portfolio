@@ -3,7 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { person } from "@/data/cv";
-import { PostHogProvider } from "./providers";
+import { PostHogProvider, ThemeProvider } from "./providers";
 
 import "./globals.css";
 import React from "react";
@@ -42,8 +42,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0b0c",
-  colorScheme: "dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f4f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
+  ],
+  colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -57,10 +60,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
       </head>
       <body>
-        <PostHogProvider>
-          {children}
-          <Analytics />
-        </PostHogProvider>
+        <ThemeProvider>
+          <PostHogProvider>
+            {children}
+            <Analytics />
+          </PostHogProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

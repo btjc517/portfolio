@@ -22,8 +22,8 @@ function Rail(props: { n: string; label: string; count?: number }) {
 export default function Home() {
   const year = new Date().getFullYear();
   return (
-    <div className={s.site}>
-      <style>{`html,body{background:#0b0b0c;color-scheme:dark}`}</style>
+    <div className={s.site} data-site>
+      <style>{`html,body{background:#0b0b0c;color-scheme:dark}html[data-theme=light],html[data-theme=light] body{background:#f5f4f0;color-scheme:light}`}</style>
       <a href="#profile" className={s.skip}>
         Skip to content
       </a>
@@ -77,7 +77,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="profile" className={s.section} aria-labelledby="profile-h">
+        <section id="profile" className={`${s.section} ${s.sectionFirst}`} aria-labelledby="profile-h">
           <div className={s.rule} />
           <div className={s.grid}>
             <Rail n="01" label="Profile" />

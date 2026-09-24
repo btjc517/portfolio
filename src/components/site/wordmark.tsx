@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { onThemeChange, readPalette } from "./theme";
 
 // The name set across the full width in characters: Geist rasterised at cell resolution,
 // coverage mapped to a density ramp. It resolves out of noise the first time it scrolls into
@@ -10,7 +11,6 @@ const RAMP = " .,:;-=+*"; // edges, by coverage
 const FILL = "=+*x#"; // the solid body of the letters, a slow texture
 const NOISE = "#%&*+=-/<>0123456789";
 const ASPECT = 0.6;
-const INK = "#ecebe6";
 
 type Cell = { x: number; y: number; cov: number; dx: number; dy: number; vx: number; vy: number; delay: number; heat: number; col: number; row: number };
 
@@ -48,6 +48,7 @@ export function Wordmark({ text }: { text: string }) {
     let introAt = reduced ? -100 : Infinity; // set when first seen
     let visible = false;
     let cancelled = false;
+    let ink = readPalette().ink;
     const pointer = { x: -1e4, y: -1e4, on: false };
 
     function glyphs(chars: string) {
@@ -56,7 +57,7 @@ export function Wordmark({ text }: { text: string }) {
         s.width = Math.ceil(cellW * dpr) + 2;
         s.height = Math.ceil(cellH * dpr);
         const g = s.getContext("2d")!;
-        g.fillStyle = INK;
+        g.fillStyle = ink;
         g.font = `500 ${cellH * 0.92 * dpr}px ${mono}`;
         g.textAlign = "center";
         g.textBaseline = "middle";
@@ -238,8 +239,17 @@ export function Wordmark({ text }: { text: string }) {
       document.addEventListener("visibilitychange", onVis);
     })();
 
+    const stopTheme = onThemeChange((p) => {
+      ink = p.ink;
+      sprites = glyphs(RAMP);
+      fill = glyphs(FILL);
+      noise = glyphs(NOISE);
+      render();
+    });
+
     return () => {
       cancelled = true;
+      stopTheme();
       cancelAnimationFrame(raf);
       raf = 0;
       visible = false;

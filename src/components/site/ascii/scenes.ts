@@ -1,7 +1,7 @@
 // Small live scenes drawn in characters: one per project, one per role and school. Each is a
 // simulation that writes into a Grid every frame; see ascii/grid.ts.
 
-import { ACCENT, ASPECT, clamp, ease, Grid, INK, pick, rand, type Sim } from "./grid";
+import { ASPECT, clamp, ease, Grid, pick, rand, type Sim } from "./grid";
 
 // ---- Symphony: agents on three machines, each carrying a change from start to merge ----------
 
@@ -844,4 +844,4 @@ export const SCENES = {
 } satisfies Record<string, (cols: number, rows: number) => Sim>;
 
 export type SceneKind = keyof typeof SCENES;
-export { ACCENT, INK, Grid };
+export { Grid };

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { ACCENT, ASPECT, clamp, Grid, INK, type Sim } from "./ascii/grid";
+import { ASPECT, clamp, Grid, type Sim } from "./ascii/grid";
+import { onThemeChange, readPalette } from "./theme";
 import { SCENES, type SceneKind } from "./ascii/scenes";
 
 // Draws one ASCII scene into a canvas. Scenes run only while on screen, speed up while their
@@ -57,6 +58,7 @@ export function Miniature({ kind, label }: { kind: SceneKind; label: string }) {
     let speedTarget = 1;
     let visible = false;
     let cancelled = false; // set on unmount, so a setup still awaiting fonts never draws
+    let palette = readPalette();
 
     function sprite(ch: string, hot: boolean) {
       const key = hot ? "!" + ch : ch;
@@ -66,7 +68,7 @@ export function Miniature({ kind, label }: { kind: SceneKind; label: string }) {
       s.width = Math.ceil(cellW * dpr) + 2;
       s.height = Math.ceil(cellH * dpr);
       const g = s.getContext("2d")!;
-      g.fillStyle = hot ? ACCENT : INK;
+      g.fillStyle = hot ? palette.accent : palette.ink;
       g.font = `400 ${cellH * 0.86 * dpr}px ${family}`;
       g.textAlign = "center";
       g.textBaseline = "middle";
@@ -171,6 +173,11 @@ export function Miniature({ kind, label }: { kind: SceneKind; label: string }) {
     const enter = () => (speedTarget = 2.4);
     const leave = () => (speedTarget = 1);
     const onVis = () => loop();
+    const stopTheme = onThemeChange((p) => {
+      palette = p;
+      sprites = new Map();
+      render();
+    });
 
     (async () => {
       family = getComputedStyle(canvas).fontFamily || "monospace";
@@ -192,6 +199,7 @@ export function Miniature({ kind, label }: { kind: SceneKind; label: string }) {
 
     return () => {
       cancelled = true;
+      stopTheme();
       cancelAnimationFrame(raf);
       raf = 0;
       visible = false;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { onThemeChange, readPalette } from "./theme";
 
 // A photograph drawn in characters, room and all. It sits against the right edge at the
 // full height of its stage, and its left edge burns off into the page. The burning is a small
@@ -31,8 +32,8 @@ const SRC_W = 375;
 const SRC_H = 500;
 const CROP = { x0: 0, y0: 0.12, x1: 1, y1: 1 };
 const RAMP = " .,:;-=+*x#%@";
-const INK = "#e8e6df";
-const GROUND = "#0b0b0c";
+const BACK_LIGHT = 0.3; // in light mode, how dark the room is drawn relative to the person
+const LIGHT_CURVE = 0.8; // in light mode, the curve from darkness to density; below 1 lifts skin midtones
 const CELL_ASPECT = 0.6;
 const ROWS = 88; // look 06: rows of characters down the frame, whatever the screen height
 const SHARPEN = 0.5;
@@ -150,9 +151,9 @@ async function loadImage(src: string) {
 }
 
 type Props = {
-  /** Background colour behind the characters; defaults to the lab's near-black. */
+  /** Background colour behind the characters; defaults to the page's --bg. */
   ground?: string;
-  /** Character colour; defaults to the lab's off-white. */
+  /** Character colour; defaults to the page's --ink. */
   ink?: string;
   /** Rows of characters down the frame; more rows means finer cells. The count is the look,
    *  so a taller screen gets bigger cells rather than more of them. */
@@ -169,7 +170,7 @@ type Props = {
   onReady?: () => void;
 };
 
-export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ramp: rampText = RAMP, sharpen = SHARPEN, soften = 0, intro = true, onReady }: Props = {}) {
+export function Portrait({ ground: groundProp, ink: inkProp, rows: rowCount = ROWS, ramp: rampText = RAMP, sharpen = SHARPEN, soften = 0, intro = true, onReady }: Props = {}) {
   const readyRef = useRef(onReady);
   readyRef.current = onReady;
   const stageRef = useRef<HTMLDivElement>(null);
@@ -186,7 +187,15 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
     const ctx: CanvasRenderingContext2D = ctx2d;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Colours follow the page's theme. On a light page the picture is drawn as a positive: dense
+    // characters where the photograph is dark, like pencil on paper, so the face never shows as a
+    // negative.
+    let palette = readPalette();
+    let ink = inkProp ?? palette.ink;
+    let ground = groundProp ?? palette.bg;
+    let light = palette.light;
     let cancelled = false;
+    let stopTheme = () => {};
     let raf = 0;
     let resizeTimer = 0;
     let last = 0;
@@ -514,6 +523,13 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
         const m = poseMask[i];
         // The person gets a shadow lift (a lower exponent) so the unlit side of the face still
         // reads; the room keeps its darker curve.
+        if (light) {
+          // Darkness becomes density. Skin midtones get enough characters to hold the face's form
+          // (cheeks, jaw, neck), and the room is held well back.
+          const d = Math.pow(1 - clamp((poseLum[i] - 0.06) / 0.86, 0, 1), LIGHT_CURVE);
+          tone[i] = clamp(d * (BACK_LIGHT + (1 - BACK_LIGHT) * m) * toneScale[i] + dither[i], 0, 1);
+          continue;
+        }
         let v = Math.pow(poseLum[i], 0.85 - 0.25 * m);
         v = clamp((v - 0.08) / 0.82, 0, 1);
         if (v > 0.8) v = 0.8 + (v - 0.8) * 0.45;
@@ -1126,6 +1142,14 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
       readyRef.current?.();
       if (!reduced) raf = requestAnimationFrame(frame);
       window.addEventListener("resize", onResize);
+      stopTheme = onThemeChange((p) => {
+        ink = inkProp ?? p.ink;
+        ground = groundProp ?? p.bg;
+        light = p.light;
+        sprites = makeSpriteSet(family, 1);
+        updateTone();
+        render();
+      });
       document.addEventListener("visibilitychange", onVisibility);
       sizer?.observe(stage);
       watcher?.observe(stage);
@@ -1169,13 +1193,14 @@ export function Portrait({ ground = GROUND, ink = INK, rows: rowCount = ROWS, ra
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
+      stopTheme();
       sizer?.disconnect();
       watcher?.disconnect();
     };
-  }, [ground, ink, rowCount, rampText, sharpen, soften, intro]);
+  }, [groundProp, inkProp, rowCount, rampText, sharpen, soften, intro]);
 
   return (
-    <div ref={stageRef} style={{ position: "absolute", inset: 0, overflow: "hidden", background: ground, color: ink, fontFamily: "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+    <div ref={stageRef} style={{ position: "absolute", inset: 0, overflow: "hidden", background: groundProp ?? "var(--bg)", color: inkProp ?? "var(--ink)", fontFamily: "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace" }}>
       <canvas
         ref={canvasRef}
         aria-label="Portrait of Ben Cheesebrough, drawn in characters"

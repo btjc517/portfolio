@@ -28,7 +28,8 @@ const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": proce
   let failed = 0;
   // Desktop sizes only: on a phone the portrait is cropped and its frayed edge is off-screen.
   for (const viewport of [{ width: 1512, height: 945 }, { width: 1920, height: 1080 }]) {
-    const p = await b.newPage({ viewport, deviceScaleFactor: 2 , extraHTTPHeaders: bypass });
+    // Dark mode: the check measures light ink on the dark ground.
+    const p = await b.newPage({ viewport, deviceScaleFactor: 2, colorScheme: "dark", extraHTTPHeaders: bypass });
     await p.addInitScript((seconds) => {
       const out = (window.__band = []);
       const small = document.createElement("canvas");

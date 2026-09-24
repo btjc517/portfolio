@@ -1,7 +1,6 @@
-// The character grid every small ASCII scene draws into, and the helpers they share.
+// The character grid every small ASCII scene draws into, and the helpers they share. Colours come
+// from the page's theme when the grid is drawn (see miniature.tsx).
 
-export const INK = "#ecebe6";
-export const ACCENT = "#ff5b1f";
 export const ASPECT = 0.6; // cell width over cell height
 
 export class Grid {

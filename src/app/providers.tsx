@@ -62,7 +62,7 @@ function SuspendedPostHogPageView() {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
-      attribute="class"
+      attribute="data-theme"
       defaultTheme="system"
       enableSystem={true}
       disableTransitionOnChange
