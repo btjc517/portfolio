@@ -5,8 +5,8 @@
 // Usage: NODE_PATH=$PWD/node_modules node scripts/site/check-type.cjs [base-url]
 const { chromium } = require("playwright");
 
-const MAX_WEIGHT = 300;
-const WORDMARK_MIN = 700;
+const MAX_WEIGHT = 200;
+const WORDMARK_MIN = 800;
 const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS } : undefined;
 
 (async () => {
