@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { onThemeChange, readPalette } from "./theme";
-import { NAME_WEIGHT } from "./type";
+import { WORDMARK_WEIGHT } from "./type";
 
 // The name set across the full width in characters: Geist rasterised at cell resolution,
 // coverage mapped to a density ramp. It resolves out of noise the first time it scrolls into
@@ -79,7 +79,7 @@ export function Wordmark({ text }: { text: string }) {
 
       // Size the type so the longest line spans the full width.
       const probe = document.createElement("canvas").getContext("2d")!;
-      probe.font = `${NAME_WEIGHT} 100px ${family}`;
+      probe.font = `${WORDMARK_WEIGHT} 100px ${family}`;
       const ms = lines.map((l) => probe.measureText(l));
       const widest = ms.reduce((a, b) => (b.actualBoundingBoxRight + b.actualBoundingBoxLeft > a.actualBoundingBoxRight + a.actualBoundingBoxLeft ? b : a));
       const fs = ((cols * cellW) / (widest.actualBoundingBoxRight + widest.actualBoundingBoxLeft)) * 100;
@@ -98,7 +98,7 @@ export function Wordmark({ text }: { text: string }) {
       r.height = Math.ceil(H);
       const g = r.getContext("2d", { willReadFrequently: true })!;
       g.fillStyle = "#fff";
-      g.font = `${NAME_WEIGHT} ${fs}px ${family}`;
+      g.font = `${WORDMARK_WEIGHT} ${fs}px ${family}`;
       g.textBaseline = "alphabetic";
       lines.forEach((l, k) => g.fillText(l, (ms[k].actualBoundingBoxLeft / 100) * fs, cellH * 0.5 + asc + k * lineH));
       const data = g.getImageData(0, 0, r.width, r.height).data;
@@ -225,7 +225,7 @@ export function Wordmark({ text }: { text: string }) {
       family = getComputedStyle(canvas).getPropertyValue("--font-geist-sans").trim() || getComputedStyle(canvas).fontFamily || "sans-serif";
       mono = getComputedStyle(canvas).getPropertyValue("--font-geist-mono").trim() || "monospace";
       try {
-        await Promise.all([document.fonts.load(`${NAME_WEIGHT} 100px ${family}`), document.fonts.load(`500 12px ${mono}`)]);
+        await Promise.all([document.fonts.load(`${WORDMARK_WEIGHT} 100px ${family}`), document.fonts.load(`500 12px ${mono}`)]);
       } catch {
         // use whatever resolves
       }
@@ -263,5 +263,5 @@ export function Wordmark({ text }: { text: string }) {
     };
   }, [text]);
 
-  return <canvas ref={ref} role="img" aria-label={text} data-weight={NAME_WEIGHT} />;
+  return <canvas ref={ref} role="img" aria-label={text} data-weight={WORDMARK_WEIGHT} />;
 }
