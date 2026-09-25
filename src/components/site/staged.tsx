@@ -332,7 +332,14 @@ export function EducationSection({ education }: { education: typeof Education })
                 <span className={s.title}>{e.school}</span>
                 <span className={s.summary}>{e.award}</span>
               </span>
-              <span className={s.eduNote}>{e.note}</span>
+              <span className={s.eduNote}>
+                {e.note}
+                {e.more?.map((m) => (
+                  <span key={m} className={s.eduMore}>
+                    {m}
+                  </span>
+                ))}
+              </span>
             </div>
           ))}
         </div>

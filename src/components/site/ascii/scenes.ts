@@ -798,6 +798,91 @@ function fund(cols: number, rows: number): Sim {
   };
 }
 
+// ---- IACT: both gloves streaming, every punch a spike on its trace ---------------------------------
+
+function glove(cols: number, rows: number): Sim {
+  const big = rows >= 20;
+  const x0 = 2;
+  const x1 = cols - 3;
+  const head = 3;
+  const foot = big ? 4 : 1;
+  const laneH = Math.max(3, Math.floor((rows - head - foot - (big ? 3 : 1)) / 2));
+  const lanes = [head + 1 + Math.floor(laneH / 2), head + 1 + laneH + (big ? 3 : 1) + Math.floor(laneH / 2)];
+  const SPEED = 9; // cells a second the traces scroll
+  const TYPES = ["jab", "cross", "hook", "upper"];
+  type Hit = { t: number; lane: number; force: number; type: string; kph: number };
+  let hits: Hit[] = [];
+  let time = 0;
+  let next = 0.4;
+  let count = 118;
+  let round = 2;
+  let clock = 102; // seconds left in the round
+  let last: Hit | null = null;
+  return {
+    step(dt) {
+      time += dt;
+      clock -= dt;
+      if (clock <= 0) {
+        clock = 120;
+        round = (round % 3) + 1;
+      }
+      next -= dt;
+      if (next <= 0) {
+        // Punches come in combinations: a quick run, then a breath.
+        next = Math.random() < 0.7 ? rand(0.22, 0.4) : rand(0.8, 1.6);
+        const type = TYPES[(Math.random() * TYPES.length) | 0];
+        const lane = type === "jab" ? 0 : type === "cross" ? 1 : Math.random() < 0.5 ? 0 : 1;
+        last = { t: time, lane, force: rand(0.35, 1), type, kph: Math.round(rand(18, 34)) };
+        hits.push(last);
+        count++;
+      }
+      hits = hits.filter((h) => (time - h.t) * SPEED < x1 - x0 + 4);
+    },
+    draw(g) {
+      g.put(2, 1, "IACT", 0.5);
+      if (cols > 36) g.put(7, 1, "gloves L R connected", 0.24);
+      const c = `ROUND ${round}  ${Math.floor(clock / 60)}:${String(Math.floor(clock % 60)).padStart(2, "0")}`;
+      g.put(cols - 2 - c.length, 1, c, 0.6);
+      lanes.forEach((y, k) => {
+        g.put(x0, y - Math.floor(laneH / 2), k ? "R" : "L", 0.5);
+        for (let x = x0 + 2; x <= x1; x++) g.put(x, y, "-", 0.14);
+      });
+      // Each punch is a sharp spike with a smaller swing either side, moving left as time passes.
+      // Names are skipped where the one before on the same trace would touch them.
+      const labelEnd = [-1e9, -1e9];
+      for (const h of hits) {
+        const x = Math.round(x1 - (time - h.t) * SPEED);
+        const y = lanes[h.lane];
+        const up = Math.max(1, Math.round(h.force * (laneH / 2 - 0.5)));
+        const fresh = time - h.t < 0.35;
+        for (let r = 1; r <= up; r++) g.put(x, y - r, r === up ? "^" : "|", fresh ? 1 : 0.7, fresh);
+        g.put(x, y, "+", 0.8, fresh);
+        if (up > 1) {
+          for (let r = 1; r <= Math.ceil(up / 2); r++) g.put(x - 1, y - r, ":", 0.4);
+          g.put(x + 1, y + 1, ".", 0.4);
+          if (laneH > 4) g.put(x + 1, y + 2, ":", 0.3);
+        }
+        if (big && x - 1 > x0 + 2 && x + h.type.length < cols && x - 1 > labelEnd[h.lane] + 1) {
+          g.put(x - 1, y - up - 1, h.type, fresh ? 0.8 : 0.35);
+          labelEnd[h.lane] = x - 1 + h.type.length;
+        }
+      }
+      if (!foot || !last) return;
+      const fy = rows - 2;
+      g.put(2, fy, `punches ${count}`, 0.55);
+      if (cols > 44) g.put(Math.floor(cols * 0.36), fy, `speed ${last.kph} km/h`, 0.55);
+      const f = `last ${last.type}`;
+      g.put(cols - 2 - f.length, fy, f, 0.55);
+      if (big) {
+        // Power of the last few punches, as a row of bars.
+        const bars = hits.slice(-Math.min(hits.length, Math.floor((cols - 4) / 2)));
+        bars.forEach((h, n) => g.put(2 + n * 2, fy - 2, h.force > 0.75 ? "#" : h.force > 0.5 ? "=" : "-", 0.45 + 0.4 * h.force));
+        g.put(2, fy - 3, "power", 0.3);
+      }
+    },
+  };
+}
+
 // ---- Caspar Lee's companies: a voice note turning into four apps, one after another, live -------
 
 // What each app's window types out as it is built. Handles and figures are made up.
@@ -1174,6 +1259,7 @@ export const SCENES = {
   fund,
   feed,
   voicenote,
+  glove,
   network,
   waves,
   dubai,

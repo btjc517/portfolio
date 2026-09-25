@@ -91,9 +91,10 @@ export default function Home() {
               <dl className={s.facts}>
                 {[
                   ["Based", "London, UK", "Raised in Dubai"],
-                  ["Now", "Founding Technical Lead", "ImpactOS, since July 2025"],
+                  ["Now", "Technical Co-Founder", "ImpactOS, since July 2025"],
                   ["Studying", "B.Sc. AI and Computer Science", "Birmingham, graduating 2027"],
                   ["Focus", "Retrieval and data pipelines", "and the agents that build them"],
+                  ["Outside work", "Padel, rugby and golf", "Rowing, skiing, tennis, scuba"],
                 ].map(([k, v, sub], i) => (
                   <div key={k} className={`${s.fact} ${s.reveal}`} data-reveal style={{ ["--d" as string]: i }}>
                     <dt className={s.mono}>{k}</dt>

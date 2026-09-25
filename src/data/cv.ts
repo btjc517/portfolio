@@ -7,7 +7,7 @@ export const person = {
   name: "Ben Cheesebrough",
   first: "Ben",
   last: "Cheesebrough",
-  role: "Founding Technical Lead",
+  role: "Technical Co-Founder",
   company: "ImpactOS",
   location: "London, UK",
   raised: "Dubai, UAE",
@@ -23,7 +23,7 @@ export const person = {
 };
 
 export const profile =
-  "I lead the technology at ImpactOS, an AI platform that turns messy ESG and social value data into audit-ready reports. I designed it and shipped the first version alone. Before that I co-founded a software company in Riyadh. I'm in my final year of AI and Computer Science at Birmingham, and I run a fleet of coding agents across three machines on tooling I wrote myself.";
+  "I lead the technology at ImpactOS, an AI platform that turns messy ESG and social value data into audit-ready reports. I designed it and shipped the first version alone. Before that I co-founded a software company in Riyadh. I'm in my final year of AI and Computer Science at Birmingham, and I run a fleet of coding agents across three machines on an orchestrator I rebuilt from OpenAI's Symphony.";
 
 /** Where each place is, shown in the scene beside Experience and Education. City centres, except
  * Silverstone (the circuit) and Birmingham (the university's campus). */
@@ -44,8 +44,9 @@ export type Role = {
   place: string;
   url?: string;
   now?: boolean;
-  /** Shown as one line in an "Earlier internships" block on the PDF CV, to keep it to a page. */
-  early?: boolean;
+  /** Shown as one line in an "Earlier internships" block on the PDF CV, to keep it to a page:
+   * the company, the place and this. */
+  early?: string;
   /** The ASCII scene shown beside the role, and a few words for its caption. */
   scene: SceneKind;
   caption: string;
@@ -60,7 +61,7 @@ export const roles: Role[] = [
     scene: "report",
     caption: "The report, assembling",
     company: "ImpactOS",
-    role: "Founding Technical Lead",
+    role: "Technical Co-Founder",
     when: "2025 to now",
     place: "London",
     url: "https://www.impactos.tech/",
@@ -68,12 +69,32 @@ export const roles: Role[] = [
     summary: "An AI platform that turns messy ESG and social value data into audit-ready reports.",
     points: [
       "Designed the system architecture and shipped the first version alone: frontend, backend and data.",
+      "Runs a live CDP climate disclosure for a global investment manager. CDP has no API, so rebuilt its questionnaire from CDP's own data: answers are drafted with sources, approved by the client's reviewers and uploaded to its portal, with 96% of 3,345 cells matching.",
       "Built the ingestion and retrieval layer for spreadsheets and PDFs: fuzzy matching, embeddings, NL2SQL and knowledge graphs over DuckDB and Parquet.",
+      "Built the client app in Next.js and Convex over a FastAPI backend on AWS, with Postgres, Qdrant and Neo4j behind it.",
       "Designed a bronze, silver and gold ingestion pipeline with adaptive schema mapping, and prototyped synthetic data so analytics never touch personal data.",
-      "Built the client portal in Next.js and Supabase, with documented APIs.",
+      "Led the SOC 2 security certification work, and onboarded a second engineer.",
       "Pitched the product to multinational companies, government bodies and universities, and rewrote the roadmap on what came back.",
     ],
-    stack: ["Python", "Next.js", "Supabase", "DuckDB", "Vector search", "Knowledge graphs"],
+    stack: ["Python", "FastAPI", "Next.js", "Convex", "AWS", "Postgres", "Qdrant", "Neo4j"],
+  },
+  {
+    id: "iact",
+    scene: "glove",
+    caption: "Round two, every punch counted",
+    company: "IACT",
+    role: "CTO",
+    when: "2026 to now",
+    place: "London",
+    now: true,
+    summary: "Smart boxing gloves that sense every punch, and the apps that coach and track a session.",
+    points: [
+      "Built the native iOS app in SwiftUI, reading the gloves over Bluetooth, and shipped it to testers on TestFlight.",
+      "Built the trainer and admin dashboard in Next.js on Convex, with live session data.",
+      "Built the 3D investor demo in Three.js, and designed the investor and teaser decks.",
+      "Planned the platform: a shared glove protocol and data layer, and the route from the Unity prototype to native apps.",
+    ],
+    stack: ["Swift", "SwiftUI", "Bluetooth LE", "Next.js", "Convex", "Three.js"],
   },
   {
     id: "caspar",
@@ -103,24 +124,24 @@ export const roles: Role[] = [
     when: "2023 to 2024",
     place: "Riyadh",
     url: "https://www.accesstechnologies.co/",
-    summary: "Sports booking and management software for residential compounds in Saudi Arabia, built during a gap year.",
+    summary: "Sports booking software for residential compounds in Saudi Arabia, built in a gap year.",
     points: [
       "Set up a fully foreign-owned company in Saudi Arabia, endorsed by accelerators backed by PIF, the Saudi sovereign wealth fund.",
-      "Built the admin portal and the consumer app for iOS and Android.",
+      "Designed and led the build of the admin portal and the iOS and Android app, with a small freelance team.",
       "Drafted the shareholder agreements, recruited engineers from UK universities and ran the sales team.",
-      "Merged the product into a larger regional prop-tech platform.",
+      "Held talks to fold the product into a larger regional prop-tech platform.",
     ],
     stack: ["Product", "Mobile", "Sales", "Company formation"],
   },
   {
     id: "amf1",
-    early: true,
+    early: "Web3 strategy with the Managing Director.",
     scene: "silverstone",
     caption: "A lap of Silverstone",
     company: "Aston Martin F1",
     role: "Summer Intern",
     when: "2022",
-    place: "Silverstone",
+    place: "London",
     url: "https://www.astonmartinf1.com/en-GB",
     summary: "Worked with the Managing Director on the team's Web3 strategy.",
     points: [
@@ -130,7 +151,7 @@ export const roles: Role[] = [
   },
   {
     id: "fiera",
-    early: true,
+    early: "Internal tools with the fintech team.",
     scene: "fund",
     caption: "The fund, and the city",
     company: "Fiera Real Estate",
@@ -147,7 +168,7 @@ export const roles: Role[] = [
   },
   {
     id: "create",
-    early: true,
+    early: "Content and campaign strategy for regional clients.",
     scene: "feed",
     caption: "The feed",
     company: "Create Group",
@@ -168,6 +189,8 @@ export type Project = {
   name: string;
   kind: string;
   line: string;
+  /** A shorter line for the PDF CV's projects band. */
+  short: string;
   stack: string;
 };
 
@@ -176,7 +199,8 @@ export const projects: Project[] = [
     id: "symphony",
     name: "Symphony",
     kind: "Agent orchestration",
-    line: "Runs a fleet of Claude and Codex coding agents across three machines, and tracks every change they ship.",
+    line: "Began as Helix in March, then grew from a fork of OpenAI's Symphony, rebuilt beyond recognition. Runs Claude and Codex agents across three machines on agent-cloud, and reviews and merges every change they ship.",
+    short: "A fork of OpenAI's Symphony, rebuilt beyond recognition. Runs coding agents across three machines.",
     stack: "Elixir · Electron · TypeScript",
   },
   {
@@ -184,13 +208,15 @@ export const projects: Project[] = [
     name: "ImpactOS engine",
     kind: "Data ingestion",
     line: "Reads whatever a client uploads, maps it to the right reporting framework and answers questions about it in plain English.",
+    short: "Maps whatever a client uploads to the right reporting framework, and answers questions on it.",
     stack: "Python · DuckDB · Parquet · Embeddings",
   },
   {
     id: "cortex",
     name: "Cortex",
-    kind: "Knowledge app",
-    line: "A local-first knowledge app with its own sync service and Postgres backend.",
+    kind: "Personal AI assistant",
+    line: "Pulls Gmail, WhatsApp, Canvas, GitHub and Linear into one knowledge graph, every item linked to its source, with a voice mode. Runs on a server at home.",
+    short: "Gmail, WhatsApp, Canvas, GitHub and Linear in one knowledge graph, with voice. Runs at home.",
     stack: "Electron · React · Node · Postgres",
   },
   {
@@ -198,11 +224,23 @@ export const projects: Project[] = [
     name: "Scout",
     kind: "Creator intelligence",
     line: "Rates creators the way a quant rates assets, for the talent agency MVE. Built summer 2026.",
+    short: "Rates creators the way a quant rates assets, for the talent agency MVE.",
     stack: "React · Supabase · Clerk · Postgres",
   },
 ];
 
-export const education: { id: string; school: string; award: string; when: string; place: string; note: string; scene: SceneKind; caption: string }[] = [
+export const education: {
+  id: string;
+  school: string;
+  award: string;
+  when: string;
+  place: string;
+  note: string;
+  /** Further lines under the note: prizes, projects. */
+  more?: string[];
+  scene: SceneKind;
+  caption: string;
+}[] = [
   {
     id: "birmingham",
     scene: "network",
@@ -212,6 +250,10 @@ export const education: { id: string; school: string; award: string; when: strin
     when: "2024 to 2027",
     place: "Birmingham",
     note: "Final year",
+    more: [
+      "Semi-finalist, AI Innovator of the Year, Undergraduate of the Year Awards 2026",
+      "Team project: After Hours, an app for getting home safely at night. Set up the codebase and designed its safety-aware routing.",
+    ],
   },
   {
     id: "cheltenham",
@@ -234,6 +276,9 @@ export const education: { id: string; school: string; award: string; when: strin
     note: "A* in Mathematics, Computer Science, Physics, Chemistry and Biology",
   },
 ];
+
+/** Outside work, for the profile and the PDF. */
+export const outside = "Padel, rugby, golf, rowing, skiing, tennis and scuba diving";
 
 export const toolkit = [
   { group: "AI and retrieval", items: ["PyTorch", "Transformers", "Hugging Face", "FAISS", "Qdrant", "LangChain"] },

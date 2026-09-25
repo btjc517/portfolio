@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { education, person, profile, projects, roles, toolkit } from "@/data/cv";
+import { education, outside, person, profile, projects, roles, toolkit } from "@/data/cv";
 import { NAME_TRACKING, NAME_WEIGHT } from "@/components/site/type";
 import s from "./cv.module.css";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 // The page holds at most this many points per role; the site shows them all.
-const MAX_POINTS = 4;
+const MAX_POINTS = 3;
 
 export default function CvPage() {
   // The short 2022 internships share one block, a line each.
@@ -88,7 +88,7 @@ export default function CvPage() {
                   <ul className={s.early}>
                     {early.map((r) => (
                       <li key={r.id}>
-                        <b>{r.company}</b>, {r.place}. {r.summary}
+                        <b>{r.company}</b>, {r.place}. {r.early}
                       </li>
                     ))}
                   </ul>
@@ -107,6 +107,11 @@ export default function CvPage() {
                   <p>{e.award}</p>
                   <p className={s.meta}>{e.when}</p>
                   <p className={s.note}>{e.note}</p>
+                  {e.more?.map((m) => (
+                    <p key={m} className={s.note}>
+                      {m}
+                    </p>
+                  ))}
                 </div>
               ))}
             </section>
@@ -121,6 +126,10 @@ export default function CvPage() {
               ))}
             </section>
 
+            <section>
+              <h2 className={s.label}>Outside work</h2>
+              <p className={s.note}>{outside}.</p>
+            </section>
           </aside>
         </div>
 
@@ -132,7 +141,7 @@ export default function CvPage() {
                 <h3>
                   {p.name} <span>{p.kind}</span>
                 </h3>
-                <p>{p.line}</p>
+                <p>{p.short}</p>
                 <p className={s.stack}>{p.stack}</p>
               </div>
             ))}

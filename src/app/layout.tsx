@@ -10,7 +10,7 @@ import React from "react";
 
 const title = `${person.name}, ${person.role} at ${person.company}`;
 const description =
-  "Ben Cheesebrough builds AI systems that hold up against real data. Founding Technical Lead at ImpactOS, final year of AI and Computer Science at the University of Birmingham, based in London.";
+  "Ben Cheesebrough builds AI systems that hold up against real data. Technical Co-Founder at ImpactOS, final year of AI and Computer Science at the University of Birmingham, based in London.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(person.site),
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: `%s | ${person.name}`,
   },
   description,
-  keywords: [person.name, "ImpactOS", "AI engineer", "Founding engineer", "London", "University of Birmingham", "CV"],
+  keywords: [person.name, "ImpactOS", "AI engineer", "Technical co-founder", "London", "University of Birmingham", "CV"],
   authors: [{ name: person.name, url: person.site }],
   openGraph: {
     title,

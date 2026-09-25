@@ -563,7 +563,7 @@
 }
 .facts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--gap);
   margin-top: clamp(56px, 6vw, 88px);
   padding-top: 20px;
@@ -842,6 +842,13 @@
 .eduNote {
   font-size: 14px;
   color: var(--ink-2);
+}
+/* Prizes and projects under a school's note, a step quieter. */
+.eduMore {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
 }
 
 /* Toolkit */
