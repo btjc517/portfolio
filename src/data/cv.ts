@@ -127,7 +127,7 @@ export const roles: Role[] = [
     summary: "Sports booking software for residential compounds in Saudi Arabia, built in a gap year.",
     points: [
       "Set up a fully foreign-owned company in Saudi Arabia, endorsed by accelerators backed by PIF, the Saudi sovereign wealth fund.",
-      "Designed and led the build of the admin portal and the iOS and Android app, with a small freelance team.",
+      "Built the admin portal and the consumer app for iOS and Android.",
       "Drafted the shareholder agreements, recruited engineers from UK universities and ran the sales team.",
       "Held talks to fold the product into a larger regional prop-tech platform.",
     ],
@@ -188,10 +188,18 @@ export type Project = {
   id: "symphony" | "cortex" | "scout" | "ingest";
   name: string;
   kind: string;
+  /** One sentence for the tile, seen at a glance. */
   line: string;
   /** A shorter line for the PDF CV's projects band. */
   short: string;
   stack: string;
+  /** The number on the tile. */
+  stat: { value: string; label: string };
+  /** The detail view: a few sentences, three numbers, and how it works, step by step. */
+  overview: string;
+  numbers: { value: string; label: string }[];
+  steps: { name: string; text: string }[];
+  link?: { label: string; href: string };
 };
 
 export const projects: Project[] = [
@@ -199,9 +207,25 @@ export const projects: Project[] = [
     id: "symphony",
     name: "Symphony",
     kind: "Agent orchestration",
-    line: "Began as Helix in March, then grew from a fork of OpenAI's Symphony, rebuilt beyond recognition. Runs Claude and Codex agents across three machines on agent-cloud, and reviews and merges every change they ship.",
+    line: "Runs Claude and Codex coding agents across three machines, and reviews and merges what they ship.",
     short: "A fork of OpenAI's Symphony, rebuilt beyond recognition. Runs coding agents across three machines.",
-    stack: "Elixir · Electron · TypeScript",
+    stack: "Elixir · Electron · TypeScript · Tailscale",
+    stat: { value: "3", label: "machines, one fleet" },
+    overview:
+      "Symphony began in March as Helix, a team of planner, builder, reviewer and verifier agents. It then grew out of a fork of OpenAI's open-source Symphony and was rebuilt beyond recognition: 495 of its 512 commits are mine. It takes work from Linear, hands it to coding agents on three machines, has a second model review every change, and merges what passes.",
+    numbers: [
+      { value: "3", label: "machines: a MacBook, an always-on M1 and a Windows desktop" },
+      { value: "495/512", label: "commits mine, in a fork of OpenAI's Symphony" },
+      { value: "100%", label: "test coverage required by the engine" },
+    ],
+    steps: [
+      { name: "Issue", text: "Work starts as a Linear issue. Symphony picks it up and claims it, so no two agents take the same job." },
+      { name: "Dispatch", text: "agent-cloud gives the task its own git worktree on one of three machines, linked over Tailscale." },
+      { name: "Build", text: "Claude or Codex makes the change in that worktree, with the repo's own rules and checks." },
+      { name: "Review", text: "A second model reviews the change. Findings go back to the builder until the review comes back clean." },
+      { name: "Proof", text: "The pull request carries proof of what was checked: screenshots, a video and a written account." },
+      { name: "Merge", text: "Only the orchestrator can merge or touch the live database. When a call needs a human, it asks in plain English." },
+    ],
   },
   {
     id: "ingest",
@@ -209,15 +233,46 @@ export const projects: Project[] = [
     kind: "Data ingestion",
     line: "Reads whatever a client uploads, maps it to the right reporting framework and answers questions about it in plain English.",
     short: "Maps whatever a client uploads to the right reporting framework, and answers questions on it.",
-    stack: "Python · DuckDB · Parquet · Embeddings",
+    stack: "Python · FastAPI · DuckDB · Parquet · Qdrant · Neo4j",
+    stat: { value: "96%", label: "of 3,345 CDP cells matched" },
+    overview:
+      "The engine behind ImpactOS. Clients upload spreadsheets and PDFs in whatever shape they come. The engine keeps them as they are, maps them onto the reporting framework the client needs, and answers questions with a citation back to the source row. For one client it drafts a full CDP climate disclosure, which their reviewers approve before it goes in.",
+    numbers: [
+      { value: "96%", label: "of 3,345 cells matched on upload to CDP's portal" },
+      { value: "3", label: "tiers from raw to report: bronze, silver, gold" },
+      { value: "4", label: "ways to find an answer: fuzzy, vector, SQL and graph" },
+    ],
+    steps: [
+      { name: "Upload", text: "Spreadsheets, PDFs and CSVs arrive as they are. There is no template for the client to fill in." },
+      { name: "Bronze", text: "Raw files are kept untouched, so every figure in a report can be traced back to where it came from." },
+      { name: "Silver", text: "Columns are matched to known fields with fuzzy matching and embeddings, and the mapping adapts to each client's layout." },
+      { name: "Gold", text: "Clean tables line up with the framework the client reports against, such as CDP or the UK Social Value Model." },
+      { name: "Answer", text: "Questions in plain English become SQL or graph queries over DuckDB and Parquet, and every answer cites its source rows." },
+      { name: "Review", text: "Reviewers approve each drafted answer. For CDP, an agent then enters it in the portal and checks every cell." },
+    ],
+    link: { label: "impactos.tech", href: "https://www.impactos.tech/" },
   },
   {
     id: "cortex",
     name: "Cortex",
     kind: "Personal AI assistant",
-    line: "Pulls Gmail, WhatsApp, Canvas, GitHub and Linear into one knowledge graph, every item linked to its source, with a voice mode. Runs on a server at home.",
+    line: "Pulls Gmail, WhatsApp, Canvas, GitHub and Linear into one knowledge graph, with a voice mode. Runs on a server at home.",
     short: "Gmail, WhatsApp, Canvas, GitHub and Linear in one knowledge graph, with voice. Runs at home.",
     stack: "Electron · React · Node · Postgres",
+    stat: { value: "5", label: "sources, one graph" },
+    overview:
+      "My own assistant. It pulls my email, messages, university coursework, code and tasks into one knowledge graph, so every answer links back to where it came from. I can ask it things out loud, and it also runs my home controls and a password vault. The sync service and its database run on a Windows server at home.",
+    numbers: [
+      { value: "5", label: "sources: Gmail, WhatsApp, Canvas, GitHub, Linear" },
+      { value: "1,800+", label: "commits since April" },
+      { value: "24/7", label: "on a server at home" },
+    ],
+    steps: [
+      { name: "Sync", text: "Connectors pull in Gmail, WhatsApp, Canvas, GitHub and Linear." },
+      { name: "Link", text: "Each item becomes part of the graph: people, threads, tasks and files, each tied to its source." },
+      { name: "Ask", text: "Search, or ask out loud. Answers quote the items they came from." },
+      { name: "Act", text: "It also drives home controls and keeps passwords in a self-hosted vault." },
+    ],
   },
   {
     id: "scout",
@@ -226,6 +281,20 @@ export const projects: Project[] = [
     line: "Rates creators the way a quant rates assets, for the talent agency MVE. Built summer 2026.",
     short: "Rates creators the way a quant rates assets, for the talent agency MVE.",
     stack: "React · Supabase · Clerk · Postgres",
+    stat: { value: "4", label: "weeks, idea to demo" },
+    overview:
+      "Scout is MVE's tool for finding and tracking creators. I rebuilt it as a full-stack web app in four weeks with coding agents: AI search across the roster, a page for every creator, and a scoring engine that treats each creator like an asset, with a beta, an alpha, a Sharpe ratio and an overall Scout Score, computed in Postgres.",
+    numbers: [
+      { value: "~200", label: "commits in four weeks" },
+      { value: "4", label: "scores per creator: beta, alpha, Sharpe, Scout Score" },
+      { value: "8", label: "views, from AI search to a Creator 100 index" },
+    ],
+    steps: [
+      { name: "Search", text: "Ask in plain English for the creators a brief needs." },
+      { name: "Score", text: "Each creator gets a beta, an alpha and a Sharpe ratio, the way a quant scores a stock, rolled into one Scout Score." },
+      { name: "Plan", text: "Agency and campaign views plan budgets across a roster, with brand spend alongside." },
+      { name: "Feedback", text: "A feedback button on any element sends notes straight into an agent job queue, so changes land fast." },
+    ],
   },
 ];
 

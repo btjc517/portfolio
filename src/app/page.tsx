@@ -1,9 +1,9 @@
 import { education, person, profile as PROFILE, projects, roles, toolkit } from "@/data/cv";
 import { Clock } from "@/components/site/clock";
 import { ArrowDown, ArrowUpRight } from "@/components/site/icons";
-import { Miniature } from "@/components/site/miniature";
 import { Nav } from "@/components/site/nav";
 import { Portrait } from "@/components/site/portrait";
+import { ProjectsSection } from "@/components/site/projects";
 import { Reveals } from "@/components/site/reveals";
 import { EducationSection, RailHead, WorkSection } from "@/components/site/staged";
 import { Statement } from "@/components/site/statement";
@@ -111,32 +111,7 @@ export default function Home() {
 
         <WorkSection roles={roles} />
 
-        <section id="projects" className={s.section} aria-labelledby="projects-h">
-          <div className={s.rule} />
-          <div className={s.grid}>
-            <Rail n="03" label="Projects" count={projects.length} />
-            <div className={s.body}>
-              <h2 id="projects-h" className="sr-only">
-                Projects
-              </h2>
-              <div className={s.tiles}>
-                {projects.map((p, i) => (
-                  <article key={p.id} className={`${s.tile} ${s.reveal}`} data-reveal data-tile style={{ ["--d" as string]: i % 2 }}>
-                    <div className={s.screen}>
-                      <Miniature kind={p.id} label={`${p.name}: ${p.kind}, animated in characters`} />
-                    </div>
-                    <div className={s.tileText}>
-                      <h3 className={s.tileName}>{p.name}</h3>
-                      <span className={`${s.mono} ${s.tileKind}`}>{p.kind}</span>
-                      <p className={s.tileLine}>{p.line}</p>
-                      <p className={`${s.mono} ${s.tileStack}`}>{p.stack}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <ProjectsSection projects={projects} />
 
         <EducationSection education={education} />
 

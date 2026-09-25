@@ -10,7 +10,17 @@ function symphony(cols: number, rows: number): Sim {
   const lanesPer = 2;
   const n = machines.length * lanesPer;
   const top = 4;
-  const gap = Math.max(2, Math.floor((rows - top - 2) / n));
+  // Lanes stay close together on a tall screen; the space below holds a log of recent merges.
+  const gap = clamp(Math.floor((rows - top - 2) / n), 2, rows >= 44 ? 5 : 4);
+  const logY = top + n * gap + 2;
+  const logRows = Math.max(0, rows - logY - 3);
+  // A few earlier merges, so the log is not empty when the scene first appears.
+  const log: { task: number; machine: string; agent: string; at: number }[] = Array.from({ length: 8 }, (_, k) => ({
+    task: 2209 - k,
+    machine: machines[(k * 2 + 1) % machines.length],
+    agent: k % 3 === 0 ? "codex" : "claude",
+    at: -40 - k * rand(40, 110),
+  }));
   // Narrow tiles drop the agent column and shorten the machine names.
   const wide = cols >= 64;
   const labelW = cols >= 48 ? 13 : 7;
@@ -47,6 +57,9 @@ function symphony(cols: number, rows: number): Sim {
         if (l.p >= 1) {
           l.p = 0;
           l.merged = time;
+          const lane = lanes.indexOf(l);
+          log.unshift({ task: l.task, machine: machines[Math.floor(lane / lanesPer)], agent: l.agent, at: time });
+          if (log.length > 12) log.pop();
           l.speed = rand(0.05, 0.14);
           l.review = rand(0.6, 0.85);
           l.reviewed = false;
@@ -74,6 +87,21 @@ function symphony(cols: number, rows: number): Sim {
         if (since < 1.4) g.put(x1 + 2, y, "merged", 1 - since / 1.4, since < 0.5);
         else g.put(x1 + 2, y, `#${l.task}`, 0.2);
       });
+      if (logRows >= 4 && cols >= 48) {
+        g.put(2, logY, "MERGED", 0.5);
+        g.put(9, logY, "reviewed by a second model", 0.24);
+        for (let x = 2; x < cols - 2; x++) g.put(x, logY + 1, "-", 0.12);
+        log.slice(0, logRows - 2).forEach((m, k) => {
+          const y = logY + 2 + k;
+          const al = Math.max(0.2, 0.6 - k * 0.05);
+          g.put(2, y, `#${m.task}`, al);
+          g.put(10, y, m.agent, al * 0.8);
+          g.put(18, y, m.machine, al * 0.8);
+          const ago = time - m.at;
+          const when = ago < 90 ? `${Math.max(1, Math.round(ago))}s ago` : `${Math.round(ago / 60)}m ago`;
+          g.put(cols - 2 - 8, y, when.padStart(8), al * 0.7);
+        });
+      }
     },
   };
 }

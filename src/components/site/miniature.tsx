@@ -50,17 +50,22 @@ export function Miniature({
   rows = 24,
   maxCell = 15,
   field = false,
+  rate = 1,
 }: {
   kind: SceneKind;
   label: string;
   rows?: number;
   maxCell?: number;
   field?: boolean;
+  /** How fast the scene runs: 1 is normal, 0 holds it still. */
+  rate?: number;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const kindRef = useRef(kind);
   const sizeRef = useRef({ rows, maxCell, field });
   sizeRef.current = { rows, maxCell, field };
+  const rateRef = useRef(rate);
+  rateRef.current = rate;
   const switchRef = useRef<((k: SceneKind) => void) | null>(null);
 
   useEffect(() => {
@@ -258,8 +263,9 @@ export function Miniature({
       const dt = Math.min(0.05, (now - (last || now)) / 1000);
       last = now;
       speed += (speedTarget - speed) * Math.min(1, dt * 4);
-      t += dt * speed;
-      sim?.step(dt * speed, t);
+      const run = dt * speed * rateRef.current;
+      t += run;
+      if (run > 0) sim?.step(run, t);
       render();
       raf = visible && !document.hidden && !cancelled ? requestAnimationFrame(frame) : 0;
     }
