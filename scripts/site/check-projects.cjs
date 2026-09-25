@@ -79,6 +79,36 @@ const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": proce
       }), i);
       check(!after.open && after.back && !/projects\//.test(after.hash), `${w}px project ${i + 1}: Esc closes, focus back on the tile, address ${after.hash || "(none)"}`);
     }
+    // Moving on from a late step of a project to one with fewer steps must not break the sheet
+    // (it once asked the next project for a step it did not have, and the sheet vanished).
+    {
+      const errors = [];
+      const onErr = (e) => errors.push(String(e));
+      p.on("pageerror", onErr);
+      let alive = false;
+      try {
+        await tiles.nth(1).scrollIntoViewIfNeeded();
+        await tiles.nth(1).click();
+        await p.waitForTimeout(600);
+        const steps = p.locator("[role=dialog] [role=tab]");
+        await steps.nth((await steps.count()) - 1).click();
+        await p.waitForTimeout(300);
+        for (const label of ["Next project", "Next project", "Previous project", "Previous project", "Previous project"]) {
+          await p.locator(`[role=dialog] button[aria-label='${label}']`).click({ timeout: 3000 });
+          await p.waitForTimeout(350);
+          const tabs = p.locator("[role=dialog] [role=tab]");
+          await tabs.nth((await tabs.count()) - 1).click({ timeout: 3000 });
+          await p.waitForTimeout(250);
+        }
+        alive = await p.evaluate(() => !!document.querySelector("[role=dialog] [role=tabpanel]"));
+      } catch {
+        alive = false;
+      }
+      p.off("pageerror", onErr);
+      check(alive && errors.length === 0, `${w}px moving between projects from their last steps keeps the sheet (${errors.length} page errors)`);
+      await p.keyboard.press("Escape");
+      await p.waitForTimeout(500);
+    }
     // Opening straight from an address.
     await p.goto(url.replace(/#.*$/, "") + "#projects/cortex", { waitUntil: "networkidle" });
     await p.waitForTimeout(800);

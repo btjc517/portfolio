@@ -246,7 +246,7 @@ export const projects: Project[] = [
       { name: "Upload", text: "Spreadsheets, PDFs and CSVs arrive as they are. There is no template for the client to fill in." },
       { name: "Bronze", text: "Raw files are kept untouched, so every figure in a report can be traced back to where it came from." },
       { name: "Silver", text: "Columns are matched to known fields with fuzzy matching and embeddings, and the mapping adapts to each client's layout." },
-      { name: "Gold", text: "Clean tables line up with the framework the client reports against, such as CDP or the UK Social Value Model." },
+      { name: "Gold", text: "Clean tables line up item by item with the framework the client reports against, such as CDP or the UK Social Value Model." },
       { name: "Answer", text: "Questions in plain English become SQL or graph queries over DuckDB and Parquet, and every answer cites its source rows." },
       { name: "Review", text: "Reviewers approve each drafted answer. For CDP, an agent then enters it in the portal and checks every cell." },
     ],
@@ -291,7 +291,7 @@ export const projects: Project[] = [
     ],
     steps: [
       { name: "Search", text: "Ask in plain English for the creators a brief needs." },
-      { name: "Score", text: "Each creator gets a beta, an alpha and a Sharpe ratio, the way a quant scores a stock, rolled into one Scout Score." },
+      { name: "Score", text: "Each creator gets a beta, an alpha and a Sharpe ratio, the way a quant scores a stock, rolled into one Scout Score that ranks the roster." },
       { name: "Plan", text: "Agency and campaign views plan budgets across a roster, with brand spend alongside." },
       { name: "Feedback", text: "A feedback button on any element sends notes straight into an agent job queue, so changes land fast." },
     ],

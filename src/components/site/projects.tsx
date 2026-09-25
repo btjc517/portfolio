@@ -146,13 +146,16 @@ function CaseSheet({
 }) {
   const sheet = useRef<HTMLDivElement>(null);
   const [rate, setRate] = useState(1);
-  const [step, setStep] = useState(0);
+  // The step belongs to the project it was chosen in, so moving to a project with fewer steps
+  // starts it at its first step in the same render, never at a step it does not have.
+  const [at, setAt] = useState({ id: p.id, step: 0 });
+  const step = at.id === p.id ? Math.min(at.step, p.steps.length - 1) : 0;
+  const setStep = (n: number) => setAt({ id: p.id, step: n });
   const [auto, setAuto] = useState(true);
   const [reduced, setReduced] = useState(false);
 
   // A new project starts at its first step, playing.
   useEffect(() => {
-    setStep(0);
     setAuto(true);
     sheet.current?.querySelector<HTMLElement>("[data-scroll]")?.scrollTo({ top: 0 });
   }, [p.id]);
@@ -162,9 +165,9 @@ function CaseSheet({
   // The steps play through on their own until the reader picks one.
   useEffect(() => {
     if (!auto || reduced) return;
-    const id = window.setTimeout(() => setStep((n) => (n + 1) % p.steps.length), STEP_MS);
+    const id = window.setTimeout(() => setAt({ id: p.id, step: (step + 1) % p.steps.length }), STEP_MS);
     return () => window.clearTimeout(id);
-  }, [auto, reduced, step, p.steps.length]);
+  }, [auto, reduced, step, p.id, p.steps.length]);
 
   // Hold the page still behind the sheet, and take focus into it.
   useEffect(() => {
