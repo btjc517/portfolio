@@ -11,7 +11,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// The page holds at most this many points per role; the site shows them all.
+const MAX_POINTS = 4;
+
 export default function CvPage() {
+  // The short 2022 internships share one block, a line each.
+  const early = roles.filter((r) => r.early);
   return (
     <div className={s.desk}>
       <article className={s.sheet}>
@@ -53,7 +58,7 @@ export default function CvPage() {
 
             <section>
               <h2 className={s.label}>Experience</h2>
-              {roles.map((r) => (
+              {roles.filter((r) => !r.early).map((r) => (
                 <div key={r.id} className={s.role}>
                   <div className={s.roleHead}>
                     <h3>
@@ -66,12 +71,29 @@ export default function CvPage() {
                   </div>
                   <p className={s.summary}>{r.summary}</p>
                   <ul className={s.points}>
-                    {r.points.map((pt, k) => (
+                    {r.points.slice(0, MAX_POINTS).map((pt, k) => (
                       <li key={k}>{pt}</li>
                     ))}
                   </ul>
                 </div>
               ))}
+              {early.length ? (
+                <div className={s.role}>
+                  <div className={s.roleHead}>
+                    <h3>
+                      Earlier internships <span>Summer</span>
+                    </h3>
+                    <span className={s.meta}>{early[0].when}</span>
+                  </div>
+                  <ul className={s.early}>
+                    {early.map((r) => (
+                      <li key={r.id}>
+                        <b>{r.company}</b>, {r.place}. {r.summary}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
 
           </main>

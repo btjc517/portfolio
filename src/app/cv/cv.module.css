@@ -183,6 +183,20 @@
   background: var(--ink-3);
 }
 
+/* The earlier internships: a line each, company in the ink colour. */
+.early {
+  list-style: none;
+  margin-top: 1mm !important;
+  color: var(--ink-2);
+}
+.early li + li {
+  margin-top: 0.5mm;
+}
+.early b {
+  font-weight: 560;
+  color: var(--ink);
+}
+
 .band {
   padding-top: 3.2mm;
   margin-top: auto;

@@ -798,6 +798,152 @@ function fund(cols: number, rows: number): Sim {
   };
 }
 
+// ---- Caspar Lee's companies: a voice note turning into four apps, one after another, live -------
+
+// What each app's window types out as it is built. Handles and figures are made up.
+const APPS: { title: string; body: string[] }[] = [
+  {
+    title: "scout",
+    body: ["creator     score  30d", "@maya   ######## 82  +4", "@theo   ######   64  -1", "@juno   #######  77  +2", "@kit    ####     41  +0", "@remi   #####    55  +3", "@lola   ######## 88  +6", "ask: who fits a tech brand?"],
+  },
+  {
+    title: "i360",
+    body: ["brief         owner  due", "[x] kickoff     A    mon", "[x] shortlist   B    tue", "[x] brief sent  A    tue", "[ ] contracts   C    thu", "[ ] content     B    fri", "[ ] go live     A    fri", "6 briefs, 2 due today"],
+  },
+  {
+    title: "pitch",
+    body: ["BRAND x CREATORS", "", "reach          2.1m", "engagement     6.4%", "creators       3", "posts          6", "cost per view  0.02", "open the deck ->"],
+  },
+  {
+    title: "proper living",
+    body: ["+-----+-----+-----+", "| R1  | R2  | R3  |", "| xx  |     | xx  |", "+-----+-----+-----+", "| R4  | R5  | R6  |", "| xx  | xx  |     |", "+-----+-----+-----+", "rooms 6   booked 4"],
+  },
+];
+
+function voicenote(cols: number, rows: number): Sim {
+  const big = rows >= 24;
+  const waveH = big ? 7 : 1;
+  const across = big ? 2 : 4;
+  const down = big ? 2 : 1;
+  const gap = 2;
+  const ww = Math.floor((cols - 4 - gap * (across - 1)) / across);
+  // Windows are only as tall as what they hold; the note and the windows sit centred below the
+  // header.
+  const lines = Math.max(...APPS.map((x) => x.body.length));
+  const room = rows - 3;
+  const gapWave = big ? 5 : 1;
+  const wh = Math.max(3, Math.min(lines + 4, Math.floor((room - waveH - gapWave - gap * (down - 1)) / down)));
+  const block = waveH + gapWave + down * wh + (down - 1) * gap;
+  const waveY = 3 + Math.max(0, Math.floor((room - block) / 2));
+  const mid = waveY + Math.floor(waveH / 2);
+  const wx0 = 2;
+  const wx1 = cols - 3;
+  const top = waveY + waveH + gapWave;
+  const wins = APPS.map((_, k) => ({ x: 2 + (k % across) * (ww + gap), y: top + Math.floor(k / across) * (wh + gap) }));
+  const inner = ww - 4;
+  const shown = APPS.map((app) => app.body.slice(0, Math.max(0, wh - 3)).map((l) => l.slice(0, inner)));
+  const totals = shown.map((ls) => ls.reduce((n, l) => n + l.length, 0));
+  // Where the next character of a window will appear, for the falling characters to aim at.
+  const cursor = (k: number, p: number): [number, number] => {
+    let left = Math.floor(totals[k] * p);
+    for (let n = 0; n < shown[k].length; n++) {
+      if (left <= shown[k][n].length) return [wins[k].x + 2 + left, wins[k].y + 2 + n];
+      left -= shown[k][n].length;
+    }
+    return [wins[k].x + 2, wins[k].y + 2 + shown[k].length];
+  };
+  const NOTE = 9; // seconds the note plays
+  const HOLD = 3.5;
+  let amp: number[] = [];
+  const fresh = () => {
+    amp = [];
+    let v = 0.4;
+    for (let x = wx0; x <= wx1; x++) amp.push((v = clamp(v + rand(-0.3, 0.3), 0.08, 1)));
+  };
+  fresh();
+  type P = { x: number; y: number; k: number; ch: string };
+  let parts: P[] = [];
+  let time = 0;
+  let tick = 0;
+  return {
+    step(dt) {
+      time += dt;
+      if (time > NOTE + HOLD + 0.6) {
+        time = 0;
+        parts = [];
+        fresh();
+      }
+      const play = clamp(time / NOTE);
+      const head = Math.round(wx0 + (wx1 - wx0) * play);
+      const k = Math.min(3, Math.floor(play * 4));
+      // Characters leave the note under the play head and fall, a cell at a time, to the spot
+      // where the window being built is typing.
+      if (play < 1 && Math.random() < dt * 30) parts.push({ x: head, y: waveY + waveH, k, ch: pick("|:.01+") });
+      tick += dt;
+      while (tick > 1 / 24) {
+        tick -= 1 / 24;
+        parts = parts.filter((q) => {
+          const [tx, ty] = cursor(q.k, clamp(play * 4 - q.k));
+          if (q.y < ty) q.y++;
+          if (q.x !== tx && Math.random() < 0.7) q.x += Math.sign(tx - q.x);
+          return q.y < ty || Math.abs(q.x - tx) > 1;
+        });
+      }
+    },
+    draw(g) {
+      const fade = 1 - clamp((time - NOTE - HOLD) / 0.6);
+      const play = clamp(time / NOTE);
+      const head = Math.round(wx0 + (wx1 - wx0) * play);
+      const secs = Math.floor(play * 42);
+      g.put(2, 1, "VOICE NOTE", 0.5 * fade);
+      if (cols > 36) g.put(13, 1, "from Caspar", 0.24 * fade);
+      const done = APPS.filter((_, k) => play * 4 >= k + 1).length;
+      const tag = `0:${String(secs).padStart(2, "0")} / 0:42   live ${done}/4`;
+      g.put(cols - 2 - tag.length, 1, tag, 0.5 * fade);
+      // The waveform: played bars bright, the rest dim.
+      amp.forEach((v, n) => {
+        const x = wx0 + n;
+        const played = x < head;
+        if (waveH === 1) g.put(x, mid, v > 0.66 ? "|" : v > 0.33 ? ":" : ".", (played ? 0.7 : 0.22) * fade);
+        else {
+          const h = Math.max(1, Math.round(v * waveH));
+          for (let r = 0; r < h; r++) g.put(x, mid - Math.floor(h / 2) + r, played ? "|" : ":", (played ? 0.65 : 0.2) * fade);
+        }
+      });
+      if (play < 1) for (let r = 0; r < waveH; r++) g.put(head, waveY + r, "|", 1, true);
+      for (const q of parts) g.put(q.x, q.y, q.ch, 0.55 * fade);
+      APPS.forEach((app, k) => {
+        const { x, y } = wins[k];
+        const p = clamp(play * 4 - k);
+        const live = p >= 1;
+        const al = (p > 0 ? 0.34 : 0.14) * fade;
+        for (let c = x; c < x + ww; c++) {
+          g.put(c, y, "-", al);
+          g.put(c, y + wh - 1, "-", al);
+        }
+        for (let r = y; r < y + wh; r++) {
+          g.put(x, r, "|", al);
+          g.put(x + ww - 1, r, "|", al);
+        }
+        for (const [cx, cy] of [[x, y], [x + ww - 1, y], [x, y + wh - 1], [x + ww - 1, y + wh - 1]]) g.put(cx, cy, "+", al);
+        g.put(x + 2, y, ` ${app.title} `.slice(0, Math.max(0, ww - 4)), (p > 0 ? 0.7 : 0.3) * fade);
+        if (live && ww > 12) g.put(x + ww - 8, y, Math.floor(time * 2) % 2 ? " * live" : "   live", 0.9 * fade, true);
+        // The body types itself out as the note plays over this window's quarter.
+        let left = Math.floor(totals[k] * p);
+        shown[k].forEach((l, n) => {
+          const text = l.slice(0, left);
+          left = Math.max(0, left - l.length);
+          if (text) g.put(x + 2, y + 2 + n, text, (live ? 0.62 : 0.85) * fade);
+        });
+        if (p > 0 && !live && Math.floor(time * 4) % 2) {
+          const [cx, cy] = cursor(k, p);
+          g.put(cx, cy, "_", 0.9 * fade);
+        }
+      });
+    },
+  };
+}
+
 // ---- Create Group: a feed scrolling on a phone, the numbers going up ----------------------------
 
 function feed(cols: number, rows: number): Sim {
@@ -1027,6 +1173,7 @@ export const SCENES = {
   silverstone,
   fund,
   feed,
+  voicenote,
   network,
   waves,
   dubai,

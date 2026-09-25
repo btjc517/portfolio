@@ -44,6 +44,8 @@ export type Role = {
   place: string;
   url?: string;
   now?: boolean;
+  /** Shown as one line in an "Earlier internships" block on the PDF CV, to keep it to a page. */
+  early?: boolean;
   /** The ASCII scene shown beside the role, and a few words for its caption. */
   scene: SceneKind;
   caption: string;
@@ -74,6 +76,25 @@ export const roles: Role[] = [
     stack: ["Python", "Next.js", "Supabase", "DuckDB", "Vector search", "Knowledge graphs"],
   },
   {
+    id: "caspar",
+    scene: "voicenote",
+    caption: "Voice note in, working software out",
+    company: "Influencer.com, MVE and Creator Ventures",
+    role: "Summer Intern",
+    when: "2026",
+    place: "London",
+    url: "https://www.influencer.com/",
+    summary: "Seven weeks with Caspar Lee, shipping internal software across his companies.",
+    points: [
+      "Rebuilt Scout, MVE's creator-scouting tool, as a full-stack web app: AI search, a scoring engine that rates creators the way a quant rates assets, and agency and campaign views. Demoed it to the MVE team.",
+      "Moved Influencer.com's internal operations app and its client pitch-deck app off Lovable onto Supabase and Clerk, and took the operations app live on an influencer.com subdomain.",
+      "Migrated Proper Living's booking and resident platform to a new database with proper sign-in and access rules. It now runs properliving.co.za.",
+      "Ran coding-agent loops that audited each app, logged over 100 issues in Linear and merged the fixes.",
+      "Sourced candidates for the Creator Ventures Fellowship, and wrote sourced research for Caspar, including a creator-economy one-pager for a London college.",
+    ],
+    stack: ["React", "TypeScript", "Supabase", "Clerk", "Vercel", "Claude Code"],
+  },
+  {
     id: "access",
     scene: "court",
     caption: "Court 2, booked",
@@ -93,6 +114,7 @@ export const roles: Role[] = [
   },
   {
     id: "amf1",
+    early: true,
     scene: "silverstone",
     caption: "A lap of Silverstone",
     company: "Aston Martin F1",
@@ -108,6 +130,7 @@ export const roles: Role[] = [
   },
   {
     id: "fiera",
+    early: true,
     scene: "fund",
     caption: "The fund, and the city",
     company: "Fiera Real Estate",
@@ -124,6 +147,7 @@ export const roles: Role[] = [
   },
   {
     id: "create",
+    early: true,
     scene: "feed",
     caption: "The feed",
     company: "Create Group",
@@ -173,8 +197,8 @@ export const projects: Project[] = [
     id: "scout",
     name: "Scout",
     kind: "Creator intelligence",
-    line: "Scores creators for a creator-economy investor the way a quant scores assets. Built summer 2026.",
-    stack: "React · Supabase · Postgres",
+    line: "Rates creators the way a quant rates assets, for the talent agency MVE. Built summer 2026.",
+    stack: "React · Supabase · Clerk · Postgres",
   },
 ];
 
