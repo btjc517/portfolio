@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Project } from "@/data/cv";
+import type { SceneKind } from "./ascii/scenes";
 import { ArrowUpRight } from "./icons";
 import { Miniature } from "./miniature";
 import { RailHead } from "./staged";
@@ -14,6 +15,8 @@ import s from "./site.module.css";
 // (#projects/<id>), and the browser's Back closes the sheet.
 
 const SIZES = ["lg", "md", "md", "wide"] as const;
+// The sheet's scene for each project acts out its steps; see ascii/stories.
+const FLOW: Record<Project["id"], SceneKind> = { symphony: "symphonyFlow", ingest: "ingestFlow", cortex: "cortexFlow", scout: "scoutFlow" };
 const STEP_MS = 4500;
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const hashOf = (id: string) => `#projects/${id}`;
@@ -231,7 +234,7 @@ function CaseSheet({
         <div className={s.caseBody} data-scroll>
           <div className={s.caseStage}>
             <div className={s.caseScreen}>
-              <Miniature kind={p.id} label={`${p.name}: ${p.kind}, animated in characters`} rows={44} maxCell={13} rate={rate} field />
+              <Miniature kind={FLOW[p.id]} label={`${p.name}, how it works: ${p.steps[step].name}`} rows={44} maxCell={13} rate={rate} stage={step} field />
             </div>
             <div className={`${s.mono} ${s.caseControls}`} role="group" aria-label="Animation">
               <button type="button" onClick={() => setRate(rate ? 0 : 1)} aria-pressed={rate === 0}>

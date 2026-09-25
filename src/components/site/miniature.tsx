@@ -51,6 +51,7 @@ export function Miniature({
   maxCell = 15,
   field = false,
   rate = 1,
+  stage,
 }: {
   kind: SceneKind;
   label: string;
@@ -59,6 +60,8 @@ export function Miniature({
   field?: boolean;
   /** How fast the scene runs: 1 is normal, 0 holds it still. */
   rate?: number;
+  /** For story scenes: which step of the project's "How it works" to show. */
+  stage?: number;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const kindRef = useRef(kind);
@@ -66,6 +69,13 @@ export function Miniature({
   sizeRef.current = { rows, maxCell, field };
   const rateRef = useRef(rate);
   rateRef.current = rate;
+  const stageRef = useRef(stage ?? 0);
+  const stageFnRef = useRef<((n: number) => void) | null>(null);
+
+  useEffect(() => {
+    stageRef.current = stage ?? 0;
+    stageFnRef.current?.(stageRef.current);
+  }, [stage]);
   const switchRef = useRef<((k: SceneKind) => void) | null>(null);
 
   useEffect(() => {
@@ -133,6 +143,7 @@ export function Miniature({
       if (!grid) return;
       current = k;
       sim = SCENES[k](grid.cols, grid.rows);
+      sim.stage?.(stageRef.current);
       // Warm up so the first frame is mid-flow rather than empty.
       for (let n = 0; n < (reduced ? 240 : 90); n++) sim.step(1 / 30, t);
     }
@@ -276,6 +287,11 @@ export function Miniature({
       raf = requestAnimationFrame(frame);
     }
 
+    stageFnRef.current = (n: number) => {
+      sim?.stage?.(n);
+      if (reduced || !raf) render();
+    };
+
     switchRef.current = (k: SceneKind) => {
       if (k === current || !grid) return;
       start(k);
@@ -329,6 +345,7 @@ export function Miniature({
       raf = 0;
       visible = false;
       switchRef.current = null;
+      stageFnRef.current = null;
       io.disconnect();
       ro.disconnect();
       tile?.removeEventListener("pointerenter", enter);

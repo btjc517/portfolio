@@ -37,7 +37,13 @@ export class Grid {
   }
 }
 
-export type Sim = { step: (dt: number, t: number) => void; draw: (g: Grid, t: number) => void };
+export type Sim = {
+  step: (dt: number, t: number) => void;
+  draw: (g: Grid, t: number) => void;
+  /** Story scenes only: move to step n of the project's "How it works". Called whenever the
+   * reader's step changes, in any order, and once right after the scene is created. */
+  stage?: (n: number) => void;
+};
 
 export const rand = (a: number, b: number) => a + Math.random() * (b - a);
 export const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));

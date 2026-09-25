@@ -2,6 +2,10 @@
 // simulation that writes into a Grid every frame; see ascii/grid.ts.
 
 import { ASPECT, clamp, ease, Grid, pick, rand, type Sim } from "./grid";
+import { cortexFlow } from "./stories/cortex";
+import { ingestFlow } from "./stories/ingest";
+import { scoutFlow } from "./stories/scout";
+import { symphonyFlow } from "./stories/symphony";
 
 // ---- Symphony: agents on three machines, each carrying a change from start to merge ----------
 
@@ -1291,6 +1295,11 @@ export const SCENES = {
   network,
   waves,
   dubai,
+  // The detail sheet's scenes, one per project, that act out "How it works" step by step.
+  symphonyFlow,
+  ingestFlow,
+  cortexFlow,
+  scoutFlow,
 } satisfies Record<string, (cols: number, rows: number) => Sim>;
 
 export type SceneKind = keyof typeof SCENES;
