@@ -12,10 +12,10 @@ import { SCENES, type SceneKind } from "./ascii/scenes";
 // same scene with bigger characters rather than a sparse one.
 //
 // With `field` set, the scene runs in a window that fills most of the canvas and the rest is a
-// field of dim, shifting characters that runs right to the canvas's edges. If the canvas is wider
-// than its tile (it bleeds past the page margin), the window stays over the tile and the field
-// fills the overhang. The field's inner edge wobbles, and now and then creeps a cell or two into
-// the scene's empty cells, never over what the scene draws.
+// field of dim, shifting characters on the same grid, running right to the canvas's edges. If the
+// canvas is wider than its tile (it bleeds past the page margin), the window stays over the tile
+// and the field fills the overhang. The field also reaches a few rows into the scene's empty
+// cells, never over what the scene draws.
 
 const SWITCH = 0.55; // seconds the scramble between scenes takes
 const NOISE = ".:;+=*x#%";
@@ -161,9 +161,10 @@ export function Miniature({
       start(current);
     }
 
-    // How strongly the field shows at a cell, and which character it shows there. It is densest
-    // where it closes round the scene and keeps going to the canvas's edges, with a clearing that
-    // wobbles in and out in slow lobes and density that comes in patches.
+    // How strongly the field shows at a cell, and which character it shows there. Outside the
+    // scene it runs at full strength to the canvas's edges. Inside, it keeps going into the
+    // scene's empty cells and fades out over a few rows, reaching further in slow lobes, so the
+    // field and the scene read as one grid rather than a picture in a frame.
     function fieldAt(c: number, r: number): [number, string] {
       // Distance into the scene's window (positive inside), with its corners rounded off, and
       // distance to the canvas edge, both in row heights.
@@ -175,9 +176,9 @@ export function Miniature({
       const e = -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rad);
       const o = Math.min((c + 0.5) * ASPECT, (cols - c - 0.5) * ASPECT, r + 0.5, rowsN - r - 0.5);
       const drift = t * 0.14;
-      const wobble = (fbm(c * 0.07 + 40, r * 0.11, drift) - 0.5) * 2.2;
-      const reach = Math.pow(fbm(c * 0.19 + 3, r * 0.3, drift * 1.8), 3) * 2.2;
-      const w = clamp((-0.4 + wobble + reach - e) / 1.1);
+      // How far in the field reaches here: a couple of rows in most places, up to seven in lobes.
+      const depth = 1.4 + 5.6 * Math.pow(fbm(c * 0.06 + 40, r * 0.1, drift), 1.8);
+      const w = e <= 0 ? 1 : Math.pow(clamp(1 - e / depth), 1.6);
       // The very edge of the canvas is only a little ragged.
       if (w <= 0.03 || o < 0.5 * hash(c * 13 + 5, r * 7 + Math.floor(t * 0.8))) return [0, ""];
       const dens = fbm(c * 0.11 + 9, r * 0.18, drift * 1.2);
@@ -186,7 +187,7 @@ export function Miniature({
       const coin = hash(c * 17 + roll, r * 31 - roll);
       if (coin > w * (0.45 + 0.7 * dens)) return [0, ""];
       const k = clamp(dens * 0.7 + hash(c * 5 - roll, r * 11 + roll) * 0.45);
-      return [0.1 + 0.28 * w * dens, FIELD[Math.min(FIELD.length - 1, Math.floor(k * FIELD.length))]];
+      return [(0.1 + 0.28 * dens) * (0.45 + 0.55 * w), FIELD[Math.min(FIELD.length - 1, Math.floor(k * FIELD.length))]];
     }
 
     function render() {
