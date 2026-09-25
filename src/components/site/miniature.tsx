@@ -161,26 +161,36 @@ export function Miniature({
       start(current);
     }
 
-    // How strongly the field shows at a cell, and which character it shows there. Outside the
-    // scene it runs at full strength to the canvas's edges. Inside, it keeps going into the
-    // scene's empty cells and fades out over a few rows, reaching further in slow lobes, so the
-    // field and the scene read as one grid rather than a picture in a frame.
+    // How strongly the field shows at a cell, and which character it shows there. It is strongest
+    // where it meets the scene. Outward it thins as it nears the canvas's edges, still reaching
+    // them. Inward it keeps going into the scene's empty cells and fades out over a few rows,
+    // further in slow lobes, so the field and the scene read as one grid.
     function fieldAt(c: number, r: number): [number, string] {
-      // Distance into the scene's window (positive inside), with its corners rounded off, and
-      // distance to the canvas edge, both in row heights.
+      // Distance into the scene's window (positive inside) in row heights, corners rounded off.
       const rad = 2.2;
       const hx = ((cols - mxL - mxR) * ASPECT) / 2;
       const hy = (rowsN - myT - myB) / 2;
       const qx = Math.abs((c + 0.5 - (mxL + (cols - mxL - mxR) / 2)) * ASPECT) - (hx - rad);
       const qy = Math.abs(r + 0.5 - (myT + (rowsN - myT - myB) / 2)) - (hy - rad);
       const e = -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rad);
-      const o = Math.min((c + 0.5) * ASPECT, (cols - c - 0.5) * ASPECT, r + 0.5, rowsN - r - 0.5);
       const drift = t * 0.14;
-      // How far in the field reaches here: a couple of rows in most places, up to seven in lobes.
-      const depth = 1.4 + 5.6 * Math.pow(fbm(c * 0.06 + 40, r * 0.1, drift), 1.8);
-      const w = e <= 0 ? 1 : Math.pow(clamp(1 - e / depth), 1.6);
-      // The very edge of the canvas is only a little ragged.
-      if (w <= 0.03 || o < 0.5 * hash(c * 13 + 5, r * 7 + Math.floor(t * 0.8))) return [0, ""];
+      // How far in the field reaches here: a couple of rows in most places, up to seven in lobes,
+      // less on a small screen (a phone's pinned strip is only a dozen rows tall).
+      const depth = (1.4 + 5.6 * Math.pow(fbm(c * 0.06 + 40, r * 0.1, drift), 1.8)) * Math.min(1, (rowsN - myT - myB) / 40);
+      // Outside the scene it fades as it nears each edge of the canvas, across the whole margin on
+      // that side, down to a few faint characters at the edge itself.
+      const ease = (v: number) => {
+        const k = clamp(v);
+        return k * k * (3 - 2 * k);
+      };
+      const out = Math.min(
+        ease((c + 0.5) / Math.max(1, mxL)),
+        ease((cols - c - 0.5) / Math.max(1, mxR)),
+        ease((r + 0.5) / Math.max(1, myT)),
+        ease((rowsN - r - 0.5) / Math.max(1, myB)),
+      );
+      const w = e <= 0 ? 0.08 + 0.92 * out : Math.pow(clamp(1 - e / depth), 1.6);
+      if (w <= 0.03) return [0, ""];
       const dens = fbm(c * 0.11 + 9, r * 0.18, drift * 1.2);
       // Each cell re-rolls at its own slow rate, in place: whether it shows, and what it shows.
       const roll = Math.floor(t * (0.35 + 1.9 * hash(c + 7, r)) + hash(r, c) * 13);
