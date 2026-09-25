@@ -103,9 +103,9 @@ export function useActiveRow(ids: string[]) {
   return { listRef, active: hover ?? scrolled, setHover };
 }
 
-// A pinned screen in the left column that shows the scene for the active row. The bar above it
-// says which row, what the scene is and where it happened; the strip below lights that row's
-// years on a shared axis, in the accent colour when the row is still going.
+// The scene for the active row, in the left column, set in a field of characters rather than a
+// box. The line above it says which row, what the scene is and where it happened; the years
+// below light up the ones that row covers, in the accent colour when it is still going.
 export function Stage({ items, active, shape, span }: { items: Item[]; active: string; shape: Shape; span: [number, number] }) {
   const k = Math.max(0, items.findIndex((it) => it.id === active));
   const item = items[k];
@@ -126,7 +126,7 @@ export function Stage({ items, active, shape, span }: { items: Item[]; active: s
         </span>
       </figcaption>
       <div className={s.stageScreen}>
-        <Miniature kind={item.scene} label={`${item.name}: ${item.caption}, animated in characters`} rows={shape === "tall" ? 24 : 17} maxCell={17} />
+        <Miniature kind={item.scene} label={`${item.name}: ${item.caption}, animated in characters`} rows={shape === "tall" ? 24 : 17} maxCell={17} field />
       </div>
       <div className={`${s.mono} ${s.years}`} role="img" aria-label={`${item.name}, ${item.when}`}>
         {years.map((y) => {
@@ -181,19 +181,124 @@ export function StagedSection({
   );
 }
 
+// Experience. On a desktop screen tall enough to hold it, the section pins and scrolling steps
+// through the roles: each stretch of scroll opens one role and closes the last, and the list
+// slides so the open role stays in view. Elsewhere the page flows, and each role opens as the
+// reader reaches it and stays open. Pressing a row steps to it when pinned, or opens and closes
+// it when flowing.
 export function WorkSection({ roles }: { roles: Role[] }) {
+  const ids = roles.map((r) => r.id);
+  const { listRef, active: flowActive, setHover } = useActiveRow(ids);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [pinned, setPinned] = useState(false);
+  const [step, setStep] = useState(0);
+  const [shift, setShift] = useState(0);
+  const [open, setOpen] = useState<Set<string>>(() => new Set([ids[0]]));
+  const active = pinned ? ids[step] : flowActive;
+
+  // Pinned: which role the scroll position has reached.
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const track = trackRef.current;
+      const frame = track?.firstElementChild as HTMLElement | null;
+      if (!track || !frame) return;
+      const style = getComputedStyle(frame);
+      const isPinned = style.position === "sticky";
+      setPinned(isPinned);
+      if (!isPinned) return;
+      const per = (track.offsetHeight - frame.offsetHeight) / roles.length;
+      const into = parseFloat(style.top) - track.getBoundingClientRect().top;
+      setStep(Math.min(roles.length - 1, Math.max(0, Math.floor(into / per))));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [roles.length]);
+
+  // Flowing: a role opens when the reader reaches it, and stays open.
+  useEffect(() => {
+    if (pinned) return;
+    setOpen((prev) => (prev.has(flowActive) ? prev : new Set(prev).add(flowActive)));
+  }, [pinned, flowActive]);
+
+  // Pinned: slide the list so the open role sits near the top with the one before it peeking
+  // above, and its whole panel on screen. Measured from the closed heights, so it is right
+  // before the panels finish animating.
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!pinned || !body) return setShift(0);
+    const items = Array.from(body.querySelectorAll<HTMLElement>("[data-stage-id]"));
+    const closed = items.map((el) => (el.firstElementChild as HTMLElement).offsetHeight + 1);
+    const panel = (items[step]?.querySelector("[role=region]")?.firstElementChild as HTMLElement | undefined)?.scrollHeight ?? 0;
+    const above = closed.slice(0, step).reduce((p, q) => p + q, 0);
+    const peek = step > 0 ? Math.min(closed[step - 1] * 0.55, 72) : 0;
+    let y = peek - above;
+    const room = body.clientHeight - 32;
+    if (above + y + closed[step] + panel > room) y = room - above - closed[step] - panel;
+    // Near the end, stop once the list's last row reaches the bottom, so the rows before fill
+    // the space above rather than leaving it empty.
+    const total = closed.reduce((p, q) => p + q, 0) + panel;
+    y = Math.max(y, Math.min(0, room - total));
+    setShift(Math.min(0, y));
+  }, [pinned, step]);
+
+  const shown = pinned ? new Set([active]) : open;
+  const press = (id: string) => {
+    const track = trackRef.current;
+    if (pinned && track) {
+      const frame = track.firstElementChild as HTMLElement;
+      const per = (track.offsetHeight - frame.offsetHeight) / roles.length;
+      const top = track.getBoundingClientRect().top + window.scrollY - parseFloat(getComputedStyle(frame).top);
+      window.scrollTo({ top: top + (ids.indexOf(id) + 0.5) * per, behavior: "smooth" });
+      return;
+    }
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const items = roles.map((r) => ({ id: r.id, scene: r.scene, caption: r.caption, name: r.company, when: r.when, place: r.place }));
   return (
-    <StagedSection
-      id="work"
-      n="02"
-      label="Experience"
-      count={roles.length}
-      shape="tall"
-      span={[2022, new Date().getFullYear()]}
-      items={roles.map((r) => ({ id: r.id, scene: r.scene, caption: r.caption, name: r.company, when: r.when, place: r.place }))}
-    >
-      {({ active, setHover }) => <Experience roles={roles} active={active} setHover={setHover} />}
-    </StagedSection>
+    <section id="work" className={s.section} aria-labelledby="work-h">
+      <div className={s.rule} />
+      <div className={s.workTrack} ref={trackRef} style={{ ["--steps" as string]: roles.length }}>
+        <div className={`${s.grid} ${s.workFrame}`}>
+          <div className={`${s.rail} ${s.railStaged} ${s.railWork}`}>
+            <RailHead n="02" label="Experience" count={roles.length} />
+            <Stage items={items} active={active} shape="tall" span={[2022, new Date().getFullYear()]} />
+          </div>
+          <div
+            className={`${s.body} ${s.bodyStaged} ${s.workBody}`}
+            data-shifted={shift < 0 || undefined}
+            ref={(el) => {
+              bodyRef.current = el;
+              listRef.current = el;
+            }}
+          >
+            <h2 id="work-h" className="sr-only">
+              Experience
+            </h2>
+            <div className={s.workList} style={{ transform: shift ? `translateY(${shift}px)` : undefined }}>
+              <Experience roles={roles} active={active} open={shown} focus={pinned} onPress={press} setHover={pinned ? undefined : setHover} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

@@ -1,22 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import type { Role } from "@/data/cv";
 import { ArrowUpRight } from "./icons";
 import s from "./site.module.css";
 
-export function Experience({ roles, active, setHover }: { roles: Role[]; active?: string; setHover?: (id: string | null) => void }) {
-  const [open, setOpen] = useState<Set<string>>(() => new Set([roles[0]?.id]));
-  const toggle = (id: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
+// The roles, each a row that opens to its details. Which rows are open is decided by the section
+// (see WorkSection); with `focus` on, rows other than the active one are dimmed.
+export function Experience({
+  roles,
+  active,
+  open,
+  focus,
+  onPress,
+  setHover,
+}: {
+  roles: Role[];
+  active?: string;
+  open: Set<string>;
+  focus?: boolean;
+  onPress: (id: string) => void;
+  setHover?: (id: string | null) => void;
+}) {
   return (
-    <ol className={s.list} style={{ listStyle: "none", margin: 0, padding: 0 }}>
+    <ol className={`${s.list} ${focus ? s.listFocus : ""}`} style={{ listStyle: "none", margin: 0, padding: 0 }}>
       {roles.map((r, i) => {
         const isOpen = open.has(r.id);
         return (
@@ -29,7 +35,7 @@ export function Experience({ roles, active, setHover }: { roles: Role[]; active?
             onPointerLeave={() => setHover?.(null)}
             style={{ ["--d" as string]: i }}
           >
-            <button className={s.row} aria-expanded={isOpen} aria-controls={`role-${r.id}`} onClick={() => toggle(r.id)}>
+            <button className={s.row} aria-expanded={isOpen} aria-controls={`role-${r.id}`} onClick={() => onPress(r.id)}>
               <span className={`${s.mono} ${s.rowMeta}`}>
                 <span className={`${s.when} ${r.now ? s.whenNow : ""}`}>
                   {r.now ? <span className={s.dot} aria-hidden="true" /> : null}

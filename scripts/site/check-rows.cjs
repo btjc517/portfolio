@@ -22,8 +22,13 @@ const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": proce
       const row = rows.nth(i);
       for (const press of ["open", "close"]) {
         await row.locator("button").first().click();
-        await p.waitForTimeout(900);
-        const opacity = await row.evaluate((el) => Number(getComputedStyle(el).opacity));
+        // Pressing a row can scroll to it first (the pinned section steps to it), so give it up
+        // to 2.5 s to settle; the bug this guards against left the row faded for good.
+        let opacity = 0;
+        for (let waited = 0; waited < 2500 && opacity <= 0.99; waited += 100) {
+          await p.waitForTimeout(100);
+          opacity = await row.evaluate((el) => Number(getComputedStyle(el).opacity));
+        }
         const ok = opacity > 0.99;
         if (!ok) failed++;
         console.log(`${viewport.width}px row ${i + 1}/${n} after ${press}: opacity ${opacity.toFixed(2)} ${ok ? "ok" : "FAIL"}`);

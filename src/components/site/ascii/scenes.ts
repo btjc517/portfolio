@@ -479,137 +479,291 @@ function court(cols: number, rows: number): Sim {
   };
 }
 
-// ---- Aston Martin F1: a car lapping a circuit against the clock ---------------------------------
+// ---- Aston Martin F1: a lap of Silverstone, next door to the team's factory ----------------------
 
-function track(cols: number, rows: number): Sim {
-  const cx = cols / 2;
-  const cy = rows / 2 + 1;
-  const rx = cols * 0.4;
-  const ry = (rows - 6) * 0.45;
-  const N = 480;
-  const path: [number, number][] = [];
-  for (let k = 0; k < N; k++) {
-    const th = (k / N) * Math.PI * 2;
-    // An oval with a few bends in it, so it reads as a circuit rather than a ring.
-    const x = cx + rx * (Math.cos(th) + 0.18 * Math.cos(3 * th) - 0.08 * Math.sin(2 * th));
-    const y = cy + ry * (Math.sin(th) + 0.22 * Math.sin(2 * th) * Math.cos(th));
-    path.push([x, y]);
-  }
-  const bend = path.map((_, k) => {
-    const a = path[(k + N - 6) % N];
-    const b = path[k];
-    const c = path[(k + 6) % N];
-    const t1 = Math.atan2(b[1] - a[1], b[0] - a[0]);
-    const t2 = Math.atan2(c[1] - b[1], c[0] - b[0]);
-    let d = Math.abs(t2 - t1);
+// The Grand Prix circuit, every 40 m round the lap, clockwise from the old pit straight: x east and
+// y south, in km. From bacinger/f1-circuits (MIT licence).
+const SILVERSTONE = [
+  0.611,0.015,0.651,0.012,0.691,0.008,0.731,0.005,0.771,0.002,0.81,0.0,0.849,0.007,0.881,0.03,
+  0.903,0.064,0.915,0.101,0.925,0.14,0.935,0.179,0.945,0.218,0.951,0.257,0.955,0.297,0.958,0.337,
+  0.96,0.377,0.962,0.417,0.963,0.457,0.965,0.497,0.976,0.535,0.994,0.57,1.01,0.607,1.004,0.646,
+  0.99,0.683,0.976,0.721,0.972,0.76,0.985,0.798,1.008,0.83,1.027,0.866,1.024,0.905,1.0,0.936,
+  0.967,0.958,0.932,0.979,0.901,1.004,0.881,1.038,0.862,1.073,0.843,1.109,0.824,1.144,0.804,1.179,
+  0.785,1.214,0.766,1.249,0.747,1.284,0.728,1.319,0.708,1.354,0.689,1.389,0.67,1.424,0.651,1.459,
+  0.632,1.495,0.612,1.53,0.591,1.563,0.569,1.597,0.547,1.63,0.524,1.663,0.496,1.691,0.459,1.704,
+  0.419,1.698,0.385,1.677,0.365,1.643,0.348,1.607,0.328,1.572,0.304,1.54,0.279,1.509,0.251,1.48,
+  0.224,1.451,0.198,1.42,0.172,1.39,0.141,1.369,0.11,1.393,0.074,1.401,0.045,1.374,0.022,1.341,
+  0.007,1.304,0.0,1.265,0.018,1.23,0.042,1.197,0.066,1.166,0.091,1.134,0.115,1.102,0.139,1.071,
+  0.164,1.039,0.188,1.007,0.213,0.976,0.237,0.944,0.262,0.913,0.286,0.881,0.314,0.852,0.351,0.84,
+  0.391,0.841,0.43,0.847,0.47,0.853,0.51,0.855,0.549,0.847,0.584,0.828,0.615,0.803,0.647,0.779,
+  0.678,0.754,0.709,0.729,0.743,0.709,0.774,0.728,0.785,0.766,0.796,0.805,0.823,0.831,0.852,0.808,
+  0.866,0.77,0.877,0.732,0.883,0.692,0.879,0.653,0.852,0.624,0.823,0.597,0.793,0.57,0.763,0.543,
+  0.734,0.516,0.704,0.489,0.675,0.462,0.645,0.436,0.615,0.409,0.586,0.382,0.556,0.355,0.526,0.328,
+  0.497,0.301,0.467,0.274,0.437,0.247,0.408,0.221,0.374,0.2,0.335,0.198,0.3,0.216,0.29,0.254,
+  0.285,0.294,0.273,0.331,0.238,0.348,0.201,0.337,0.179,0.305,0.186,0.266,0.204,0.23,0.222,0.195,
+  0.24,0.159,0.261,0.125,0.288,0.096,0.319,0.07,0.353,0.05,0.391,0.037,0.431,0.032,0.47,0.028,
+  0.51,0.025,0.55,0.021
+];
+const TURNS: [number, string][] = [
+  [22, "Copse"],
+  [29, "Becketts"],
+  [54, "Stowe"],
+  [72, "Club"],
+  [86, "Abbey"],
+  [102, "The Loop"],
+  [129, "Luffield"],
+];
+const START = 80; // the start line, on the Hamilton Straight
+
+function silverstone(cols: number, rows: number): Sim {
+  const raw: [number, number][] = [];
+  for (let k = 0; k < SILVERSTONE.length; k += 2) raw.push([SILVERSTONE[k], SILVERSTONE[k + 1]]);
+  const kmW = Math.max(...raw.map((q) => q[0]));
+  const kmH = Math.max(...raw.map((q) => q[1]));
+  const top = 3;
+  const foot = rows >= 18 ? 2 : 0;
+  const availW = (cols - 6) * ASPECT; // in row heights
+  const availH = rows - top - 1 - foot;
+  // Lie the circuit on its side when the screen is wider than it is tall.
+  const turn = availW / availH > 1.15;
+  const pts = raw.map(([x, y]) => (turn ? [y, kmW - x] : [x, y]) as [number, number]);
+  const w = turn ? kmH : kmW;
+  const h = turn ? kmW : kmH;
+  const sc = Math.min(availW / w, availH / h); // row heights per km
+  const x0 = (cols - (w * sc) / ASPECT) / 2;
+  const y0 = top + (availH - h * sc) / 2;
+  const n = pts.length;
+  const at = (k: number): [number, number] => {
+    const i = ((Math.floor(k) % n) + n) % n;
+    const f = k - Math.floor(k);
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    return [x0 + ((a[0] + (b[0] - a[0]) * f) * sc) / ASPECT, y0 + (a[1] + (b[1] - a[1]) * f) * sc];
+  };
+  // How sharply the track turns at each point, from which the car's speed follows.
+  const bend = pts.map((_, k) => {
+    const [ax, ay] = at(k - 2);
+    const [bx, by] = at(k);
+    const [cx, cy] = at(k + 2);
+    let d = Math.abs(Math.atan2((cy - by), (cx - bx) * ASPECT) - Math.atan2((by - ay), (bx - ax) * ASPECT));
     if (d > Math.PI) d = 2 * Math.PI - d;
     return d;
   });
+  // The track as a thin line, one cell per step, each cell drawn with the stroke that matches
+  // the way the line runs through it.
+  const path: [number, number][] = [];
+  for (let k = 0; k < n; k += 0.05) {
+    const [x, y] = at(k);
+    const q: [number, number] = [Math.round(x), Math.round(y)];
+    const last = path[path.length - 1];
+    if (!last || last[0] !== q[0] || last[1] !== q[1]) path.push(q);
+  }
+  // Drop a cell where its neighbours already touch each other, so corners are not doubled.
+  for (let k = path.length - 2; k > 0; k--) {
+    const [a, b] = [path[k - 1], path[k + 1]];
+    if (Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1) path.splice(k, 1);
+  }
+  const cells = new Map<string, string>();
+  path.forEach(([x, y], k) => {
+    const a = path[(k - 1 + path.length) % path.length];
+    const b = path[(k + 1) % path.length];
+    const dx = (b[0] - a[0]) * ASPECT;
+    const dy = b[1] - a[1];
+    const deg = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
+    const stroke = deg < 24 ? "-" : deg > 66 ? "|" : dx * dy > 0 ? "\\" : "/";
+    cells.set(`${x},${y}`, stroke);
+  });
+  // Corner names sit just outside the track, on whichever side is clear.
+  const [cx0, cy0] = pts.reduce(([sx, sy], [x, y]) => [sx + x / n, sy + y / n], [0, 0]);
+  const labels = TURNS.map(([k, name]) => {
+    const [x, y] = at(k);
+    const [mx, my] = [x0 + (cx0 * sc) / ASPECT, y0 + cy0 * sc];
+    const len = Math.hypot((x - mx) * ASPECT, y - my) || 1;
+    const ux = ((x - mx) * ASPECT) / len;
+    const uy = (y - my) / len;
+    // Try outside first, then further out, then inside, then straight left or right.
+    const tries: [number, number][] = [[ux, uy], [ux * 1.6, uy * 1.6], [-ux, -uy], [1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (const [vx, vy] of tries) {
+      const lx = Math.round(x + (vx * 2) / ASPECT - (vx < -0.3 ? name.length - 1 : vx > 0.3 ? 0 : name.length / 2));
+      const ly = Math.round(y + vy * 1.5);
+      let clear = lx >= 1 && lx + name.length < cols && ly > top && ly < rows - foot;
+      for (let q = -1; clear && q <= name.length; q++) if (cells.has(`${lx + q},${ly}`)) clear = false;
+      if (clear) return { x: lx, y: ly, name };
+    }
+    return null;
+  });
   let s = 0;
-  let lap = 23;
+  let lap = 24;
   let lapT = 0;
-  let best = 87.2;
+  let best = 86.9;
+  let kph = 0;
   const trail: number[] = [];
   let every = 0;
+  const LAP = 12; // seconds a lap takes on screen; the clock shows it as a race lap
+  const shown = (v: number) => (v * 87.4) / LAP;
   return {
     step(dt) {
-      const k = Math.floor(s) % N;
-      // Slower through the bends, flat out on the straights.
-      s += dt * 150 * (1 - Math.min(0.6, bend[k] * 2.2));
-      lapT += dt * 18;
-      if (s >= N) {
-        s -= N;
+      const k = Math.floor(s) % n;
+      const v = 1 - Math.min(0.72, bend[k] * 1.9);
+      s += dt * v * n * 0.135;
+      lapT += dt;
+      kph += (95 + 225 * v - kph) * Math.min(1, dt * 3);
+      if (s >= n) {
+        s -= n;
         lap++;
-        best = Math.min(best, lapT);
+        best = Math.min(best, shown(lapT));
         lapT = 0;
       }
       every += dt;
       if (every > 1 / 24) {
         every = 0;
-        trail.unshift(Math.floor(s) % N);
-        if (trail.length > 9) trail.pop();
+        trail.unshift(s);
+        if (trail.length > 10) trail.pop();
       }
     },
     draw(g) {
       const fmt = (v: number) => `${Math.floor(v / 60)}:${(v % 60).toFixed(1).padStart(4, "0")}`;
-      g.put(2, 1, `LAP ${lap}`, 0.5);
-      g.put(10, 1, fmt(lapT), 0.7);
-      const b = `best ${fmt(best)}`;
-      if (cols > 34) g.put(cols - 2 - b.length, 1, b, 0.3);
-      for (let k = 0; k < N; k += 3) g.put(path[k][0], path[k][1], bend[k] > 0.25 ? ":" : ".", bend[k] > 0.25 ? 0.35 : 0.2);
-      trail.forEach((k, n) => g.put(path[k][0], path[k][1], n < 3 ? "=" : "-", 0.6 - n * 0.06));
-      const k = Math.floor(s) % N;
-      g.put(path[k][0], path[k][1], "@", 1, true);
-      g.put(path[0][0], path[0][1] - 1, "#", 0.4);
+      g.put(2, 1, "SILVERSTONE", 0.5);
+      if (cols > 40) g.put(14, 1, "5.891 km", 0.24);
+      const clock = `LAP ${lap}  ${fmt(shown(lapT))}`;
+      g.put(cols - 2 - clock.length, 1, clock, 0.6);
+      for (const [key, stroke] of cells) {
+        const [x, y] = key.split(",").map(Number);
+        g.put(x, y, stroke, 0.26);
+      }
+      for (const l of labels) if (l) g.put(l.x, l.y, l.name, 0.3);
+      const [sx, sy] = at(START);
+      g.put(sx, sy, "#", 0.75);
+      trail.forEach((k, m) => {
+        const [x, y] = at(k);
+        g.put(x, y, m < 3 ? "=" : "-", 0.62 - m * 0.05);
+      });
+      const [x, y] = at(s);
+      g.put(x, y, "@", 1, true);
+      if (foot) {
+        g.put(2, rows - 2, `${Math.round(kph)} km/h`.padStart(9), 0.55);
+        const b = `best ${fmt(best)}`;
+        g.put(cols - 2 - b.length, rows - 2, b, 0.3);
+      }
     },
   };
 }
 
-// ---- Fiera Real Estate: the London skyline, lights on, with the fund line above it ---------------
+// ---- Fiera Real Estate: the fund's London assets on the river, one inspected at a time ----------
 
-function skyline(cols: number, rows: number): Sim {
-  const base = rows - 2;
-  type B = { x: number; w: number; h: number; shard: boolean };
-  const bs: B[] = [];
-  let x = 1;
-  while (x < cols - 3) {
-    const w = 3 + Math.floor(Math.random() * 5);
-    const shard = !bs.some((b) => b.shard) && x > cols * 0.55;
-    const h = shard ? Math.floor((rows - 6) * 0.95) : Math.floor((rows - 7) * rand(0.25, 0.7));
-    bs.push({ x, w: shard ? 7 : w, h, shard });
-    x += (shard ? 7 : w) + (Math.random() < 0.3 ? 1 : 0);
+// The Thames from Battersea to Blackwall, as longitude and latitude.
+const THAMES: [number, number][] = [
+  [-0.17, 51.4818], [-0.16, 51.4835], [-0.15, 51.4848], [-0.14, 51.4855], [-0.1275, 51.488], [-0.1235, 51.4945],
+  [-0.1218, 51.5008], [-0.1203, 51.5063], [-0.1167, 51.5087], [-0.1043, 51.5097], [-0.0877, 51.5079],
+  [-0.0754, 51.5055], [-0.06, 51.504], [-0.047, 51.506], [-0.033, 51.508], [-0.027, 51.503], [-0.025, 51.495],
+  [-0.02, 51.487], [-0.01, 51.4845], [-0.003, 51.4865], [0.003, 51.493], [0.006, 51.501], [0.01, 51.506],
+];
+// Illustrative holdings, named by postcode district: where they sit, what they are, value (£m), yield (%).
+const ASSETS: { name: string; lon: number; lat: number; sector: string; value: number; yld: number }[] = [
+  { name: "EC2", lon: -0.088, lat: 51.518, sector: "office", value: 84.2, yld: 5.1 },
+  { name: "SE1", lon: -0.092, lat: 51.501, sector: "life sci", value: 61.0, yld: 4.6 },
+  { name: "W1", lon: -0.145, lat: 51.514, sector: "retail", value: 45.3, yld: 5.4 },
+  { name: "E14", lon: -0.02, lat: 51.505, sector: "office", value: 72.8, yld: 5.9 },
+  { name: "N1", lon: -0.124, lat: 51.533, sector: "office", value: 58.6, yld: 4.8 },
+  { name: "SW1", lon: -0.143, lat: 51.496, sector: "resi", value: 39.1, yld: 4.2 },
+  { name: "SE10", lon: 0.0, lat: 51.479, sector: "industrial", value: 27.4, yld: 6.1 },
+];
+
+function fund(cols: number, rows: number): Sim {
+  const lon0 = -0.175;
+  const lon1 = 0.012;
+  const lat0 = 51.474;
+  const lat1 = 51.538;
+  const kmW = (lon1 - lon0) * 69.4;
+  const kmH = (lat1 - lat0) * 111.2;
+  const tableRows = rows >= 26 ? ASSETS.length : 0;
+  const top = rows >= 22 ? 5 : 3;
+  const mapRows = Math.min(rows - top - 1 - (tableRows ? tableRows + 3 : 0), ((cols - 4) * ASPECT * kmH) / kmW);
+  const sc = mapRows / kmH; // rows per km
+  const mapW = (kmW * sc) / ASPECT;
+  const mx = (cols - mapW) / 2;
+  // The map and the table sit together, centred in the space under the header.
+  const block = mapRows + (tableRows ? tableRows + 3 : 0);
+  const my = top + Math.max(0, Math.floor((rows - 1 - top - block) / 2));
+  const project = (lon: number, lat: number): [number, number] => [mx + ((lon - lon0) * 69.4 * sc) / ASPECT, my + (lat1 - lat) * 111.2 * sc];
+  // The river, sampled finely so every cell along it is drawn.
+  const river: [number, number][] = [];
+  for (let k = 0; k < THAMES.length - 1; k++) {
+    const [a, b] = [project(...THAMES[k]), project(...THAMES[k + 1])];
+    const steps = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * 2);
+    for (let q = 0; q < steps; q++) river.push([a[0] + ((b[0] - a[0]) * q) / steps, a[1] + ((b[1] - a[1]) * q) / steps]);
   }
-  const lit = new Map<string, number>();
+  const pins = ASSETS.map((x) => project(x.lon, x.lat));
+  const vals = ASSETS.map((x) => x.value);
   const nav: number[] = [];
-  let v = 0.4;
-  for (let k = 0; k < cols; k++) nav.push((v = clamp(v + rand(-0.06, 0.08), 0.1, 0.95)));
+  let v = 0.45;
+  for (let k = 0; k < cols - 4; k++) nav.push((v = clamp(v + rand(-0.05, 0.065), 0.1, 0.95)));
   let t = 0;
+  let sel = 0;
+  let since = 0;
   let nextShift = 0;
+  const DWELL = 2.4;
   return {
     step(dt) {
       t += dt;
+      since += dt;
+      if (since > DWELL) {
+        since = 0;
+        sel = (sel + 1) % ASSETS.length;
+      }
       nextShift -= dt;
       if (nextShift <= 0) {
-        nextShift = 0.25;
+        nextShift = 0.3;
         nav.shift();
-        v = clamp(v + rand(-0.07, 0.08), 0.1, 0.95);
-        nav.push(v);
+        nav.push((v = clamp(v + rand(-0.05, 0.065), 0.1, 0.95)));
       }
-      if (Math.random() < dt * 14) {
-        const b = bs[(Math.random() * bs.length) | 0];
-        const key = `${b.x + 1 + ((Math.random() * (b.w - 2)) | 0)},${base - 1 - ((Math.random() * (b.h - 2)) | 0)}`;
-        lit.set(key, lit.get(key) ? 0 : 1);
-      }
+      // The selected asset's valuation settles by small steps while it is inspected.
+      if (Math.random() < dt * 4) vals[sel] = Math.round((vals[sel] + rand(-0.15, 0.2)) * 10) / 10;
     },
     draw(g) {
+      const total = vals.reduce((p, q) => p + q, 0);
       g.put(2, 1, "FUND", 0.5);
-      const pct = `NAV +${((nav[nav.length - 1] - nav[0]) * 10 + 4).toFixed(1)}%`;
-      g.put(8, 1, pct, 0.3);
-      const top = 2;
-      const span = Math.max(2, Math.floor(rows * 0.22));
-      nav.forEach((n, k) => g.put(k, top + Math.round((1 - n) * span), k === nav.length - 1 ? "*" : ".", k === nav.length - 1 ? 0.9 : 0.35, k === nav.length - 1));
-      for (const b of bs) {
-        const y0 = base - b.h;
-        if (b.shard) {
-          for (let y = y0; y <= base; y++) {
-            const half = Math.round(((y - y0) / b.h) * (b.w / 2));
-            g.put(b.x + 3 - half, y, "/", 0.5);
-            g.put(b.x + 3 + half, y, "\\", 0.5);
-            for (let c = b.x + 4 - half; c < b.x + 3 + half; c += 2) g.put(c, y, lit.get(`${c},${y}`) ? ":" : ".", lit.get(`${c},${y}`) ? 0.7 : 0.12);
-          }
-          continue;
-        }
-        for (let c = b.x; c < b.x + b.w; c++) g.put(c, y0, "_", 0.45);
-        for (let y = y0 + 1; y <= base; y++) {
-          g.put(b.x, y, "|", 0.35);
-          g.put(b.x + b.w - 1, y, "|", 0.35);
-          for (let c = b.x + 1; c < b.x + b.w - 1; c++) {
-            const on = lit.get(`${c},${y}`);
-            if ((c + y) % 2 === 0) g.put(c, y, on ? ":" : ".", on ? 0.75 : 0.12);
-          }
-        }
+      if (cols > 36) g.put(7, 1, "London, 7 assets", 0.24);
+      const head = `£${total.toFixed(1)}m`;
+      g.put(cols - 2 - head.length, 1, head, 0.6);
+      if (top >= 5) nav.forEach((q, k) => g.put(2 + k, 2 + Math.round((1 - q) * 2), k === nav.length - 1 ? "*" : ".", k === nav.length - 1 ? 0.8 : 0.25, k === nav.length - 1));
+      // The river flows east, a character at a time.
+      river.forEach(([x, y], k) => g.put(x, y, (Math.floor(k / 2 - t * 3) & 3) === 0 ? "-" : "~", 0.42, false, true));
+      const [rx, ry] = river[Math.floor(river.length * 0.05)];
+      g.put(rx, ry + 1, "thames", 0.22);
+      pins.forEach(([x, y], k) => {
+        if (k === sel) return;
+        g.put(x, y, "o", 0.5);
+        const nm = ASSETS[k].name;
+        g.put(x + 2 + nm.length < cols ? x + 2 : x - 1 - nm.length, y, nm, 0.28);
+      });
+      // The inspected asset: a ring that opens out from it, and its name and value beside it.
+      const [px, py] = pins[sel];
+      const ring = (since * 3) % 3;
+      for (let q = 0; q < 16; q++) {
+        const th = (q / 16) * Math.PI * 2;
+        g.put(px + (Math.cos(th) * (ring + 1)) / ASPECT / 1.4, py + Math.sin(th) * (ring + 1) * 0.6, ".", 0.5 * (1 - ring / 3), false, true);
       }
-      for (let c = 0; c < cols; c++) g.put(c, base + 1, "=", 0.25);
+      g.put(px, py, "@", 1, true);
+      // Its tag goes to the right if it fits, else the left, else on the row above.
+      const tag = `${ASSETS[sel].name} ${ASSETS[sel].sector}  £${vals[sel].toFixed(1)}m`;
+      if (px + 2 + tag.length < cols - 1) g.put(px + 2, py, tag, 0.85);
+      else if (px - 2 - tag.length >= 1) g.put(px - 2 - tag.length, py, tag, 0.85);
+      else g.put(clamp(Math.round(px - tag.length / 2), 1, cols - 1 - tag.length), py - 2, tag, 0.85);
+      if (!tableRows) return;
+      const ty = my + mapRows + 2;
+      const cX = [2, 8, cols - 15, cols - 7];
+      ["asset", "sector", "value", "yield"].forEach((h, k) => g.put(cX[k], ty, h, 0.3));
+      ASSETS.forEach((x, k) => {
+        const on = k === sel;
+        const y = ty + 1 + k;
+        const al = on ? 0.9 : 0.4;
+        g.put(cX[0] - 2, y, on ? ">" : " ", 1, on);
+        g.put(cX[0], y, x.name, al);
+        g.put(cX[1], y, x.sector, al * 0.8);
+        g.put(cX[2], y, `£${vals[k].toFixed(1)}m`.padStart(7), al);
+        g.put(cX[3], y, `${x.yld.toFixed(1)}%`.padStart(5), al * 0.8);
+      });
     },
   };
 }
@@ -840,8 +994,8 @@ export const SCENES = {
   scout,
   report,
   court,
-  track,
-  skyline,
+  silverstone,
+  fund,
   feed,
   network,
   waves,

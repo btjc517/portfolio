@@ -421,17 +421,15 @@
   grid-column: 6 / -1;
   padding-left: clamp(8px, 1.8vw, 32px);
 }
+/* No box and no rules: the scene's own field of characters is its edge. */
 .stage {
   margin: 0;
-  border: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
 .stageBar {
   display: flex;
   align-items: baseline;
   gap: 14px;
-  padding: 10px 14px 11px;
-  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
   color: var(--ink-3);
 }
 .stageIdx {
@@ -461,7 +459,7 @@
   overflow: hidden;
 }
 .stage[data-shape="wide"] .stageScreen {
-  height: min(52cqw, calc(100svh - 270px));
+  height: min(62cqw, calc(100svh - 270px));
 }
 .stageScreen canvas {
   position: absolute;
@@ -470,39 +468,76 @@
   height: 100%;
   display: block;
 }
-/* One cell per year; a lit bar marks the years the active row covers. */
+/* The years on a shared axis; the ones the active row covers are lit. */
 .years {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   gap: 3px;
-  padding: 12px 14px 13px;
-  border-top: 1px solid var(--line);
+  padding-top: 12px;
   color: var(--ink-4);
 }
 .year {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
   transition: color 0.5s var(--ease);
-}
-.year::before {
-  content: "";
-  height: 2px;
-  background: var(--line-2);
-  transition: background-color 0.5s var(--ease), opacity 0.5s var(--ease);
 }
 .year[data-on] {
   color: var(--ink);
 }
-.year[data-on]::before {
-  background: var(--ink-2);
+.year[data-live] {
+  color: var(--accent);
 }
-.year[data-live]::before {
-  background: var(--accent);
+.year[data-on][data-future] {
+  color: var(--ink-3);
 }
-.year[data-future]::before {
-  opacity: 0.4;
+
+/* Experience on a desktop screen: the section pins for one stretch of scroll per role (see
+   WorkSection). The frame holds the scene and the list; the list slides inside it. */
+@media (min-width: 1101px) and (min-height: 640px) {
+  .workTrack {
+    --step: 56svh;
+    height: calc(100svh - 124px + var(--steps) * var(--step));
+  }
+  .workFrame {
+    position: sticky;
+    top: 92px;
+    height: calc(100svh - 124px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .railWork {
+    position: static;
+    height: 100%;
+    min-height: 0;
+  }
+  .railWork .stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .railWork .stageScreen {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+  .workBody {
+    height: 100%;
+    overflow: clip;
+    mask-image: linear-gradient(180deg, #000 calc(100% - 64px), transparent);
+  }
+  .workBody[data-shifted] {
+    mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 64px), transparent);
+  }
+  .workList {
+    transition: transform 0.7s var(--ease);
+  }
+}
+/* The role in focus is at full strength; the others step back. Two classes on the list so this
+   outranks the scroll reveal's opacity. */
+.list.listFocus .item:not(.itemActive) {
+  opacity: 0.38;
+}
+.list.listFocus .item:not(.itemActive):hover {
+  opacity: 0.7;
 }
 .itemActive .when {
   color: var(--ink);

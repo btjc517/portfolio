@@ -93,8 +93,8 @@ export const roles: Role[] = [
   },
   {
     id: "amf1",
-    scene: "track",
-    caption: "Race pace",
+    scene: "silverstone",
+    caption: "A lap of Silverstone",
     company: "Aston Martin F1",
     role: "Summer Intern",
     when: "2022",
@@ -108,7 +108,7 @@ export const roles: Role[] = [
   },
   {
     id: "fiera",
-    scene: "skyline",
+    scene: "fund",
     caption: "The fund, and the city",
     company: "Fiera Real Estate",
     role: "Summer Intern",
