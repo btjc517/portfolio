@@ -9,6 +9,7 @@ import { EducationSection, RailHead, WorkSection } from "@/components/site/stage
 import { Statement } from "@/components/site/statement";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { NAME_TRACKING, NAME_WEIGHT } from "@/components/site/type";
+import { PAGE_BG } from "@/components/site/tone";
 import { Wordmark } from "@/components/site/wordmark";
 import s from "@/components/site/site.module.css";
 
@@ -25,7 +26,7 @@ export default function Home() {
   const year = new Date().getFullYear();
   return (
     <div className={s.site} data-site>
-      <style>{`html,body{background:#0b0b0c;color-scheme:dark}html[data-theme=light],html[data-theme=light] body{background:#f5f4f0;color-scheme:light}`}</style>
+      <style>{PAGE_BG}</style>
       <a href="#profile" className={s.skip}>
         Skip to content
       </a>

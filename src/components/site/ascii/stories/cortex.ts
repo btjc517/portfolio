@@ -1,4 +1,4 @@
-import { ASPECT, clamp, type Grid, type Sim } from "../grid";
+import { ASPECT, clamp, type Grid, type Sim, type Tone } from "../grid";
 
 // Cortex: the detail sheet's scene, acting out each step of "How it works" (see the steps for
 // "cortex" in src/data/cv.ts). One picture that reshapes itself as the step changes:
@@ -175,13 +175,13 @@ class Txt {
     while (n < this.to.length && this.c.t >= this.st[n]) n++;
     return n;
   }
-  draw(g: Grid, x: number, y: number, alpha: number | ((k: number) => number), hot: boolean | ((k: number) => boolean) = false) {
+  draw(g: Grid, x: number, y: number, alpha: number | ((k: number) => number), hot: boolean | Tone | ((k: number) => boolean | Tone) = false) {
     const now = this.c.t;
     const tick = Math.floor(now * 20);
     for (let k = 0; k < this.st.length; k++) {
       let ch: string;
       let a = typeof alpha === "number" ? alpha : alpha(k);
-      let h = typeof hot === "boolean" ? hot : hot(k);
+      let h = typeof hot === "function" ? hot(k) : hot;
       if (now < this.st[k]) ch = this.from[k] ?? " ";
       else if (now < this.en[k]) {
         ch = NOISE[(hash(k + this.seed, tick) * NOISE.length) | 0];
@@ -779,7 +779,7 @@ export function cortexFlow(cols: number, rows: number): Sim {
           const show = Math.floor(laneRev * len);
           for (let k = 0; k < len; k++) {
             const on = fromCore ? k >= len - show : k < show;
-            if (on) g.put(p[k * 2], p[k * 2 + 1], ".", 0.2, false, true);
+            if (on) g.put(p[k * 2], p[k * 2 + 1], ".", 0.24, "blue", true);
           }
         }
         // The ring round the core, drawn round as it appears, turning a cell at a time.
@@ -788,7 +788,7 @@ export function cortexFlow(cols: number, rows: number): Sim {
         for (let k = 0; k < Math.floor(laneRev * rl); k++) {
           const j = (k + turn) % rl;
           if (j % 4 === 3) continue;
-          g.put(cc.x + ringCells[k * 2], cc.y + ringCells[k * 2 + 1], j % 4 === 0 ? ":" : ".", j % 4 === 0 ? 0.42 : 0.22, false, true);
+          g.put(cc.x + ringCells[k * 2], cc.y + ringCells[k * 2 + 1], j % 4 === 0 ? ":" : ".", j % 4 === 0 ? 0.42 : 0.22, "blue", true);
         }
         for (const pk of packets) {
           const p = paths[pk.lane];
@@ -797,8 +797,8 @@ export function cortexFlow(cols: number, rows: number): Sim {
           const k = pk.back ? len - 1 - Math.floor(pk.p) : Math.floor(pk.p);
           if (k < 0 || k >= len || (fromCore ? k < len - show : k >= show)) continue;
           const tk = pk.back ? k + 1 : k - 1;
-          if (tk >= 0 && tk < len) g.put(p[tk * 2], p[tk * 2 + 1], ".", 0.5, pk.back);
-          g.put(p[k * 2], p[k * 2 + 1], pk.ch, pk.back ? 1 : 0.95, pk.back);
+          if (tk >= 0 && tk < len) g.put(p[tk * 2], p[tk * 2 + 1], ".", 0.5, pk.back ? "green" : false);
+          g.put(p[k * 2], p[k * 2 + 1], pk.ch, pk.back ? 1 : 0.95, pk.back ? "green" : "blue");
         }
       }
 
@@ -861,14 +861,14 @@ export function cortexFlow(cols: number, rows: number): Sim {
         const m = nodes[i];
         for (let k = 0; k < m.trail.length; k += 3) g.put(m.trail[k], m.trail[k + 1], ".", 0.22 * (1 - (time - m.trail[k + 2]) / 0.16), false, true);
         let a = nodeA[i];
-        let hot = false;
+        let hot: boolean | Tone = false;
         if (at === 1 && i === focus && time - focAt > 0.3) {
           a = 1;
           hot = true;
         } else if (at === 2 && matched.includes(i)) hot = time - matchAt > 0.05;
         if (nodeFlash[i] > 0 && at === 0) {
           a = Math.max(a, nodeFlash[i]);
-          hot = nodeFlash[i] > 0.4;
+          hot = nodeFlash[i] > 0.4 ? "blue" : false;
         }
         g.put(m.x, m.y, GLYPH[ITEMS[i][0]], a, hot);
       }
@@ -888,13 +888,13 @@ export function cortexFlow(cols: number, rows: number): Sim {
         g.put(x + len, y, " ", 0);
         l.txt.draw(g, x, y, 0.85);
       }
-      for (const l of tags) l.txt.draw(g, nodes[l.node].x + 2, nodes[l.node].y, 1, true);
+      for (const l of tags) l.txt.draw(g, nodes[l.node].x + 2, nodes[l.node].y, 1, "blue");
 
       // Sources, or controls.
       for (let i = 0; i < 5; i++) {
         const y = rowsM[i].y;
         let a = [0.55, 0.45, 0.32, 0.55][at];
-        let hot = false;
+        let hot: boolean | Tone = false;
         if (at === 1 && focus >= 0 && ITEMS[focus][2] === i && time - focAt > 0.25) {
           a = 1;
           hot = true;
@@ -902,11 +902,11 @@ export function cortexFlow(cols: number, rows: number): Sim {
         if (at === 2 && phase === 4 && matched.some((m) => ITEMS[m][2] === i)) a = 0.85;
         if (at === 3 && nameFlash[i] > 0) {
           a = Math.max(a, 0.55 + nameFlash[i] * 0.45);
-          hot = nameFlash[i] > 0.5;
+          hot = nameFlash[i] > 0.5 ? "green" : false;
         }
         names[i].draw(g, X0, y, a, hot);
         const sa = at === 0 ? 0.3 + nameFlash[i] * 0.5 : at === 3 ? 0.4 + nameFlash[i] * 0.6 : 0.9;
-        slots[i].draw(g, slotX + slotW - Math.max(slots[i].to.length, 1), y, sa, at === 2 || (at === 3 && nameFlash[i] > 0.5));
+        slots[i].draw(g, slotX + slotW - Math.max(slots[i].to.length, 1), y, sa, at === 2 ? "blue" : at === 3 && nameFlash[i] > 0.5 ? "green" : false);
       }
 
       // Sync: the store under the core.
@@ -917,7 +917,7 @@ export function cortexFlow(cols: number, rows: number): Sim {
 
       // Ask: the question and the answer.
       const q = QUERIES[qi % QUERIES.length];
-      query.draw(g, X0, qY, (k) => (k < 3 ? 0.55 : 0.95), (k) => q.voice && k < 3 && phase >= 1 && phase < 5);
+      query.draw(g, X0, qY, (k) => (k < 3 ? 0.55 : 0.95), (k) => (q.voice && k < 3 && phase >= 1 && phase < 5 ? "violet" : false));
       if (at === 2 && q.voice && phase === 1) {
         // Listening: a waveform, a cell per column, stepping with the voice.
         const tick = Math.floor(time * 16);
@@ -926,7 +926,7 @@ export function cortexFlow(cols: number, rows: number): Sim {
           const env = Math.sin(((k + 0.5) / wlen) * Math.PI);
           const v = env * (0.35 + 0.65 * hash(k, tick)) * clamp(askU * 5) * clamp((0.8 - askU) * 6);
           const ch = v > 0.66 ? "|" : v > 0.4 ? ":" : v > 0.14 ? "." : "";
-          if (ch) g.put(X0 + 4 + k, qY, ch, 0.9, true);
+          if (ch) g.put(X0 + 4 + k, qY, ch, 0.9, "violet");
         }
       }
       if (at === 2 && !q.voice && phase >= 1 && phase < 5) {
@@ -934,7 +934,7 @@ export function cortexFlow(cols: number, rows: number): Sim {
         if (n < query.to.length || Math.floor(time * 2.4) % 2 === 0) g.put(X0 + n, qY, "_", 0.9, true);
       }
       quote.draw(g, X0, ansY, 0.92);
-      cites.forEach((c, k) => c.draw(g, X0, ansY + 2 + k, (j) => (j < 3 ? 1 : j < right - X0 - 9 ? 0.5 : 0.34), (j) => j < 3));
+      cites.forEach((c, k) => c.draw(g, X0, ansY + 2 + k, (j) => (j < 3 ? 1 : j < right - X0 - 9 ? 0.5 : 0.34), (j) => (j < 3 ? "blue" : false)));
 
       // Act: the vault under the core, joined to it; always locked, entries always masked.
       if (at === 3 || vaultLines[0].live()) {
@@ -947,7 +947,7 @@ export function cortexFlow(cols: number, rows: number): Sim {
         );
         const writing = at === 3 && time - writeAt < 0.6;
         const justLocked = at === 3 && time - writeAt >= 0.6 && time - writeAt < 2;
-        vaultState.draw(g, vx + VW - 6, vaultTop, justLocked ? 1 : 0.5, justLocked);
+        vaultState.draw(g, vx + VW - 6, vaultTop, justLocked ? 1 : 0.5, justLocked ? "green" : false);
         if (writing) {
           const tick = Math.floor(time * 20);
           for (let j = 0; j < MASK.length; j++) g.put(vx + VW - MASK.length + j, vaultTop + 2 + writeRow, NOISE[(hash(j, tick) * NOISE.length) | 0], 0.8, true);

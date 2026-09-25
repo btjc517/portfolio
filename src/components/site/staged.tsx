@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { coords, type education as Education, type Role } from "@/data/cv";
+import type { Tone } from "./ascii/grid";
 import type { SceneKind } from "./ascii/scenes";
 import { Decode } from "./decode";
 import { Experience } from "./experience";
 import { Miniature } from "./miniature";
+import { toneVar } from "./tone";
 import s from "./site.module.css";
 
 export function RailHead({ n, label, count }: { n: string; label: string; count?: number }) {
@@ -19,7 +21,7 @@ export function RailHead({ n, label, count }: { n: string; label: string; count?
   );
 }
 
-type Item = { id: string; scene: SceneKind; caption: string; name: string; when: string; place: string };
+type Item = { id: string; scene: SceneKind; caption: string; name: string; when: string; place: string; hue: Tone };
 type Shape = "tall" | "wide";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -119,7 +121,10 @@ export function Stage({ items, active, shape, span }: { items: Item[]; active: s
         <span className={s.stageIdx}>
           {pad2(k + 1)} / {pad2(items.length)}
         </span>
-        <Decode text={item.caption} className={s.stageName} />
+        <span className={s.stageName}>
+          <i className={s.hueDot} style={{ ["--hue" as string]: toneVar(item.hue) }} aria-hidden="true" />
+          <Decode text={item.caption} />
+        </span>
         <span className={s.stageWhere}>
           <span>{item.place}</span>
           <Decode text={coords[item.place] ?? ""} className={s.stageCoords} />
@@ -271,7 +276,7 @@ export function WorkSection({ roles }: { roles: Role[] }) {
     });
   };
 
-  const items = roles.map((r) => ({ id: r.id, scene: r.scene, caption: r.caption, name: r.company, when: r.when, place: r.place }));
+  const items = roles.map((r) => ({ id: r.id, scene: r.scene, caption: r.caption, name: r.company, when: r.when, place: r.place, hue: r.hue }));
   return (
     <section id="work" className={s.section} aria-labelledby="work-h">
       <div className={s.rule} />
@@ -310,7 +315,7 @@ export function EducationSection({ education }: { education: typeof Education })
       label="Education"
       shape="wide"
       span={[2019, 2027]}
-      items={education.map((e) => ({ id: e.id, scene: e.scene, caption: e.caption, name: e.school, when: e.when, place: e.place }))}
+      items={education.map((e) => ({ id: e.id, scene: e.scene, caption: e.caption, name: e.school, when: e.when, place: e.place, hue: e.hue }))}
     >
       {({ active, setHover }) => (
         <div className={s.list}>

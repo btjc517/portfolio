@@ -1,4 +1,4 @@
-import { clamp, type Grid, type Sim } from "../grid";
+import { clamp, type Grid, type Sim, type Tone } from "../grid";
 
 // Scout: the detail sheet's scene, acting out each step of "How it works" (see the steps for
 // "scout" in src/data/cv.ts). One continuous picture of a creator database:
@@ -110,7 +110,7 @@ type Creator = Mover & {
   fy: number;
   g: string;
   a: number;
-  hot: boolean;
+  hot: boolean | Tone;
   absorb: boolean;
 };
 
@@ -126,7 +126,7 @@ type Text = {
   tm: number[];
   a: number;
   ta: number;
-  hot: boolean;
+  hot: boolean | Tone;
   seen: boolean;
   dur: number;
   acc: number;
@@ -247,7 +247,7 @@ export function scoutFlow(cols: number, rows: number): Sim {
   const fieldGlyph = (c: Creator) => (c.reach > 180 ? "O" : c.reach > 100 ? "o" : ".");
   const chartGlyph = (c: Creator) => (c.sharpe > 1.8 ? "@" : c.sharpe > 1.2 ? "O" : c.sharpe > 0.7 ? "o" : ".");
 
-  function aim(c: Creator, x: number, y: number, g: string, a: number, hot = false, absorb = false) {
+  function aim(c: Creator, x: number, y: number, g: string, a: number, hot: boolean | Tone = false, absorb = false) {
     if (x !== c.tx || y !== c.ty) {
       // A hidden creator that is already home can hop unseen; anything visible walks.
       if (absorb && c.absorb && c.x === c.tx && c.y === c.ty) {
@@ -280,7 +280,7 @@ export function scoutFlow(cols: number, rows: number): Sim {
     const stagger = changed.length > 3 ? 0.007 : 0;
     changed.forEach((i, k) => (o.tm[i] = o.dur * (0.3 + 0.7 * Math.random()) + k * stagger));
   }
-  function txt(id: string, x: number, y: number, s: string, a: number, hot = false, dur = 0.3) {
+  function txt(id: string, x: number, y: number, s: string, a: number, hot: boolean | Tone = false, dur = 0.3) {
     let o = texts.get(id);
     if (!o) {
       o = { x, y, tx: x, ty: y, cur: [], tgt: "", tm: [], a, ta: a, hot, seen: true, dur, acc: 0, seed: seedN++ };
@@ -490,12 +490,12 @@ export function scoutFlow(cols: number, rows: number): Sim {
       if (at === 0) {
         const lit = c.niche === qn && swept(c);
         const held = prev.indexOf(i);
-        if (lit && short.includes(i)) aim(c, L, rowY(slot(i)), "o", 0.9, !ready.has(i));
+        if (lit && short.includes(i)) aim(c, L, rowY(slot(i)), "o", 0.9, "pink");
         else if (held >= 0 && !short.includes(i) && !ready.has(short[held])) aim(c, L, rowY(held), "o", 0.3);
-        else aim(c, c.fx, c.fy, fieldGlyph(c), lit ? 0.62 : 0.2 + (c.reach / 248) * 0.12);
+        else aim(c, c.fx, c.fy, fieldGlyph(c), lit ? 0.62 : 0.2 + (c.reach / 248) * 0.12, lit ? "pink" : false);
       } else if (at === 1) {
         const mine = short.includes(i);
-        aim(c, sx(c.beta), sy(c.alpha), focus === i ? "@" : chartGlyph(c), mine ? 0.85 : 0.16 + (c.score / 100) * 0.22, focus === i);
+        aim(c, sx(c.beta), sy(c.alpha), focus === i ? "@" : chartGlyph(c), mine ? 0.85 : 0.16 + (c.score / 100) * 0.22, focus === i ? true : mine ? "pink" : false);
       } else if (at === 2) {
         const v = VIEWS[view];
         const n = Math.min(v.labels.length, itemsFit);
@@ -557,7 +557,7 @@ export function scoutFlow(cols: number, rows: number): Sim {
         const live = j.state < 3 || time - j.shipped < 0.9;
         txt(`j${j.id}`, L, y, `job-${j.id}  ${j.text.slice(0, jW)}`, live ? 0.85 : 0.34);
         const st = j.state === 1 ? "queued" : j.state === 2 ? "agent" : "shipped";
-        txt(`js${j.id}`, stX, y, st, j.state === 3 && time - j.shipped < 0.9 ? 1 : live ? 0.6 : 0.3, j.state === 3 && time - j.shipped < 0.9, 0.2);
+        txt(`js${j.id}`, stX, y, st, j.state === 3 && time - j.shipped < 0.9 ? 1 : live ? 0.6 : 0.4, j.state === 3 ? "green" : j.state === 2 ? "violet" : false, 0.2);
       });
       if (pointer.on && phase >= 0.15) txt("fb", R - 2, targetY, "[+]", 1, true, 0.15);
       if (hasPipe) {
@@ -849,7 +849,7 @@ export function scoutFlow(cols: number, rows: number): Sim {
       if (at === 3 && pointer.on) g.put(L, pointer.y, ">", 1, true);
       if (at === 3) {
         jobs.slice(0, Q).forEach((j, k) => {
-          if (j.shown && j.state === 2) g.put(R, qy0 + k * gapQ, "|/-\\"[tick % 4], 1, true);
+          if (j.shown && j.state === 2) g.put(R, qy0 + k * gapQ, "|/-\\"[tick % 4], 1, "violet");
         });
       }
       if (hasPipe && pPipe > 0) {

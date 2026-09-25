@@ -2,9 +2,10 @@
 // the page, and a way to hear when the theme changes. Themes are set by next-themes as
 // data-theme="light" | "dark" on <html>.
 
-export type Palette = { ink: string; bg: string; accent: string; light: boolean };
+export type Palette = { ink: string; bg: string; accent: string; light: boolean; tones: string[] };
 
-const FALLBACK: Palette = { ink: "#ecebe6", bg: "#0b0b0c", accent: "#ff5b1f", light: false };
+// tones follows TONES in ascii/grid.ts: live, green, blue, violet, pink.
+const FALLBACK: Palette = { ink: "#ecebe6", bg: "#0b0b0c", accent: "#ff5b1f", light: false, tones: ["#ff5b1f", "#79d4a1", "#86c2ff", "#bfb0ff", "#f79ec5"] };
 
 export function readPalette(): Palette {
   if (typeof document === "undefined") return FALLBACK;
@@ -12,11 +13,13 @@ export function readPalette(): Palette {
   if (!site) return FALLBACK;
   const cs = getComputedStyle(site);
   const get = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+  const accent = get("--accent", FALLBACK.accent);
   return {
     ink: get("--ink", FALLBACK.ink),
     bg: get("--bg", FALLBACK.bg),
-    accent: get("--accent", FALLBACK.accent),
+    accent,
     light: document.documentElement.getAttribute("data-theme") === "light",
+    tones: [accent, get("--green", FALLBACK.tones[1]), get("--blue", FALLBACK.tones[2]), get("--violet", FALLBACK.tones[3]), get("--pink", FALLBACK.tones[4])],
   };
 }
 

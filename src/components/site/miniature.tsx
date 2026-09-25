@@ -122,15 +122,16 @@ export function Miniature({
     let cancelled = false; // set on unmount, so a setup still awaiting fonts never draws
     let palette = readPalette();
 
-    function sprite(ch: string, hot: boolean) {
-      const key = hot ? "!" + ch : ch;
+    // tone is 0 for ink, otherwise 1 + an index into palette.tones (see TONES in ascii/grid.ts).
+    function sprite(ch: string, tone: number) {
+      const key = tone + ch;
       let s = sprites.get(key);
       if (s) return s;
       s = document.createElement("canvas");
       s.width = Math.ceil(cellW * dpr) + 2;
       s.height = Math.ceil(cellH * dpr);
       const g = s.getContext("2d")!;
-      g.fillStyle = hot ? palette.accent : palette.ink;
+      g.fillStyle = tone ? palette.tones[tone - 1] ?? palette.accent : palette.ink;
       g.font = `400 ${cellH * 0.86 * dpr}px ${family}`;
       g.textAlign = "center";
       g.textBaseline = "middle";
@@ -233,12 +234,12 @@ export function Miniature({
           const sr = r - myT;
           let glyph = "";
           let alpha = 0;
-          let isHot = false;
+          let isHot = 0;
           if (sc >= 0 && sc < gc && sr >= 0 && sr < gr) {
             const i = sr * gc + sc;
             glyph = ch[i];
             alpha = a[i];
-            isHot = hot[i] === 1;
+            isHot = hot[i];
             if (p < 1) {
               // Mid-switch: each cell settles at its own moment, sweeping left to right.
               const settle = hash(i, 7) * 0.55 + (sc / gc) * 0.45;
@@ -247,7 +248,7 @@ export function Miniature({
                 else {
                   glyph = NOISE[(hash(i, tick + 1) * NOISE.length) | 0];
                   alpha = 0.18 + 0.3 * hash(i, 3);
-                  isHot = false;
+                  isHot = 0;
                 }
               }
             }
@@ -259,10 +260,13 @@ export function Miniature({
             if (near(sc - 1) || near(sc + 1)) glyph = "";
             else {
               [alpha, glyph] = fieldAt(c, r);
-              isHot = false;
+              isHot = 0;
             }
           }
           if (!glyph || glyph === " " || alpha < 0.02) continue;
+          // A coloured character keeps enough strength for its colour to read: faint ones are
+          // lifted, bright ones stay as they are. The live orange is used bright already.
+          if (isHot > 1) alpha = 0.3 + 0.7 * alpha;
           ctx.globalAlpha = Math.min(1, alpha);
           ctx.drawImage(sprite(glyph, isHot), Math.round((ox + c * cellW) * dpr) - 1, Math.round((oy + r * cellH) * dpr));
         }

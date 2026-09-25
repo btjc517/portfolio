@@ -1,4 +1,5 @@
 import type { SceneKind } from "@/components/site/ascii/scenes";
+import type { Tone } from "@/components/site/ascii/grid";
 
 // Everything the site says about Ben, in one place. Facts come from
 // src/data/resume-data.tsx and public/BenCheesebrough-CV.pdf; the wording is written for the web.
@@ -49,6 +50,8 @@ export type Role = {
   early?: string;
   /** The ASCII scene shown beside the role, and a few words for its caption. */
   scene: SceneKind;
+  /** The colour of the one thing its scene is about (see TONES), used for its marker too. */
+  hue: Tone;
   caption: string;
   summary: string;
   points: string[];
@@ -58,6 +61,7 @@ export type Role = {
 export const roles: Role[] = [
   {
     id: "impactos",
+    hue: "green",
     scene: "report",
     caption: "The report, assembling",
     company: "ImpactOS",
@@ -80,6 +84,7 @@ export const roles: Role[] = [
   },
   {
     id: "iact",
+    hue: "live",
     scene: "glove",
     caption: "Round two, every punch counted",
     company: "IACT",
@@ -98,6 +103,7 @@ export const roles: Role[] = [
   },
   {
     id: "caspar",
+    hue: "pink",
     scene: "voicenote",
     caption: "Voice note in, working software out",
     company: "Influencer.com, MVE and Creator Ventures",
@@ -117,6 +123,7 @@ export const roles: Role[] = [
   },
   {
     id: "access",
+    hue: "blue",
     scene: "court",
     caption: "Court 2, booked",
     company: "Access Technologies",
@@ -135,6 +142,7 @@ export const roles: Role[] = [
   },
   {
     id: "amf1",
+    hue: "green",
     early: "Web3 strategy with the Managing Director.",
     scene: "silverstone",
     caption: "A lap of Silverstone",
@@ -151,6 +159,7 @@ export const roles: Role[] = [
   },
   {
     id: "fiera",
+    hue: "blue",
     early: "Internal tools with the fintech team.",
     scene: "fund",
     caption: "The fund, and the city",
@@ -168,6 +177,7 @@ export const roles: Role[] = [
   },
   {
     id: "create",
+    hue: "pink",
     early: "Content and campaign strategy for regional clients.",
     scene: "feed",
     caption: "The feed",
@@ -195,6 +205,8 @@ export type Project = {
   stack: string;
   /** The number on the tile. */
   stat: { value: string; label: string };
+  /** Its colour (see TONES): the dot beside its name and the marks on its page. */
+  hue: Tone;
   /** The detail view: a few sentences, three numbers, and how it works, step by step. */
   overview: string;
   numbers: { value: string; label: string }[];
@@ -205,6 +217,7 @@ export type Project = {
 export const projects: Project[] = [
   {
     id: "symphony",
+    hue: "violet",
     name: "Symphony",
     kind: "Agent orchestration",
     line: "Runs Claude and Codex coding agents across three machines, and reviews and merges what they ship.",
@@ -229,6 +242,7 @@ export const projects: Project[] = [
   },
   {
     id: "ingest",
+    hue: "green",
     name: "ImpactOS engine",
     kind: "Data ingestion",
     line: "Reads whatever a client uploads, maps it to the right reporting framework and answers questions about it in plain English.",
@@ -254,6 +268,7 @@ export const projects: Project[] = [
   },
   {
     id: "cortex",
+    hue: "blue",
     name: "Cortex",
     kind: "Personal AI assistant",
     line: "Pulls Gmail, WhatsApp, Canvas, GitHub and Linear into one knowledge graph, with a voice mode. Runs on a server at home.",
@@ -276,6 +291,7 @@ export const projects: Project[] = [
   },
   {
     id: "scout",
+    hue: "pink",
     name: "Scout",
     kind: "Creator intelligence",
     line: "Rates creators the way a quant rates assets, for the talent agency MVE. Built summer 2026.",
@@ -307,11 +323,13 @@ export const education: {
   note: string;
   /** Further lines under the note: prizes, projects. */
   more?: string[];
+  hue: Tone;
   scene: SceneKind;
   caption: string;
 }[] = [
   {
     id: "birmingham",
+    hue: "violet",
     scene: "network",
     caption: "A forward pass",
     school: "University of Birmingham",
@@ -326,6 +344,7 @@ export const education: {
   },
   {
     id: "cheltenham",
+    hue: "blue",
     scene: "waves",
     caption: "Two sources, one pattern",
     school: "Cheltenham College",
@@ -336,6 +355,7 @@ export const education: {
   },
   {
     id: "jumeirah",
+    hue: "live",
     scene: "dubai",
     caption: "Dubai, at dusk",
     school: "Jumeirah College, Dubai",

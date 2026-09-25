@@ -80,7 +80,7 @@ function symphony(cols: number, rows: number): Sim {
       lanes.forEach((l, i) => {
         const y = top + i * gap;
         if (l.machine) g.put(2, y, l.machine, 0.42);
-        if (wide) g.put(agentX, y, l.agent, 0.24);
+        if (wide) g.put(agentX, y, l.agent, 0.3, "violet");
         for (let x = x0; x <= x1; x += 2) g.put(x, y, ".", 0.12);
         const head = x0 + Math.round(l.p * (x1 - x0));
         for (let x = x0; x < head; x++) g.put(x, y, "=", 0.34);
@@ -88,7 +88,7 @@ function symphony(cols: number, rows: number): Sim {
         g.put(head, y, inReview ? (Math.floor(time * 4) % 2 ? "?" : ">") : ">", 1);
         if (inReview) g.put(head + 2, y, "review", 0.4);
         const since = time - l.merged;
-        if (since < 1.4) g.put(x1 + 2, y, "merged", 1 - since / 1.4, since < 0.5);
+        if (since < 1.4) g.put(x1 + 2, y, "merged", 1 - since / 1.4, "green");
         else g.put(x1 + 2, y, `#${l.task}`, 0.2);
       });
       if (logRows >= 4 && cols >= 48) {
@@ -99,7 +99,7 @@ function symphony(cols: number, rows: number): Sim {
           const y = logY + 2 + k;
           const al = Math.max(0.2, 0.6 - k * 0.05);
           g.put(2, y, `#${m.task}`, al);
-          g.put(10, y, m.agent, al * 0.8);
+          g.put(10, y, m.agent, al * 0.8, "violet");
           g.put(18, y, m.machine, al * 0.8);
           const ago = time - m.at;
           const when = ago < 90 ? `${Math.max(1, Math.round(ago))}s ago` : `${Math.round(ago / 60)}m ago`;
@@ -200,7 +200,7 @@ function ingest(cols: number, rows: number): Sim {
       if (cols - tx0 > 28) g.put(tx0 + 7, 1, "mapped to framework", 0.24);
       ["scope", "metric", "value"].forEach((h, c) => g.put(tx0 + c * colW, 2, h, 0.3));
       for (let x = tx0; x < tx0 + colW * 3 - 1; x++) g.put(x, 3, "-", 0.16);
-      for (let y = ty0 - 1; y < rows - 1; y++) g.put(gate, y, ":", 0.12 + 0.7 * gateFlash[y], gateFlash[y] > 0.5);
+      for (let y = ty0 - 1; y < rows - 1; y++) g.put(gate, y, ":", 0.12 + 0.7 * gateFlash[y], gateFlash[y] > 0.3 ? "blue" : false);
       for (let r = 0; r < tRows; r++) {
         const y = ty0 + r + shift;
         for (let c = 0; c < 3; c++) if (table[r][c]) g.put(tx0 + c * colW, y, table[r][c], r === 0 && shift > 0 ? 0.5 * (1 - shift) : 0.62);
@@ -316,7 +316,7 @@ function cortex(cols: number, rows: number): Sim {
         const depth = (p.z + 1) / 2;
         const l = act(i);
         const ch = l > 0.35 ? "#" : depth > 0.72 ? "@" : depth > 0.5 ? "o" : depth > 0.28 ? "*" : ".";
-        g.put(p.x, p.y, ch, Math.min(1, 0.18 + 0.72 * depth + l), i === pulse.from && time - pulse.at < 0.8);
+        g.put(p.x, p.y, ch, Math.min(1, 0.18 + 0.72 * depth + l), i === pulse.from && time - pulse.at < 0.8 ? true : l > 0.35 ? "blue" : false);
       });
       g.put(2, 1, "GRAPH", 0.5);
       g.put(8, 1, `${N} notes, ${edges.length} links`, 0.24);
@@ -437,7 +437,7 @@ function report(cols: number, rows: number): Sim {
       if (done && rows > yb + 3) {
         const stamp = "[ AUDIT READY ]";
         const on = t < lines * TYPE + GROW + 0.6 ? Math.floor(t * 8) % 2 === 0 : true;
-        if (on) g.put(cols - 2 - stamp.length, rows - 2, stamp, 0.95 * fade, true);
+        if (on) g.put(cols - 2 - stamp.length, rows - 2, stamp, 0.95 * fade, "green");
       }
     },
   };
@@ -505,19 +505,20 @@ function court(cols: number, rows: number): Sim {
       if (cols > 30) g.put(10, 1, "19:00, booked, doubles", 0.24);
       const r = `rally ${rally}`;
       g.put(cols - 2 - r.length, 1, r, 0.5);
+      // A padel court is blue; its lines take the blue, the ball stays the live colour.
       for (let x = x0; x <= x1; x++) {
-        g.put(x, y0, "-", 0.3);
-        g.put(x, y1, "-", 0.3);
+        g.put(x, y0, "-", 0.34, "blue");
+        g.put(x, y1, "-", 0.34, "blue");
       }
       for (let y = y0; y <= y1; y++) {
-        g.put(x0, y, "|", 0.3);
-        g.put(x1, y, "|", 0.3);
+        g.put(x0, y, "|", 0.34, "blue");
+        g.put(x1, y, "|", 0.34, "blue");
         g.put(net, y, ":", 0.45);
-        g.put(sl, y, "|", 0.14);
-        g.put(sr, y, "|", 0.14);
+        g.put(sl, y, "|", 0.18, "blue");
+        g.put(sr, y, "|", 0.18, "blue");
       }
       // The centre service line runs from each service line to the net.
-      for (let x = sl; x <= sr; x++) if (x !== net) g.put(x, Math.round(mid), "-", 0.12);
+      for (let x = sl; x <= sr; x++) if (x !== net) g.put(x, Math.round(mid), "-", 0.16, "blue");
       for (const [x, y] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) g.put(x, y, "+", 0.4);
       trail.forEach(([x, y], k) => g.put(x, y, k < 2 ? "o" : ".", 0.5 - k * 0.06));
       players.forEach((q, k) => {
@@ -698,10 +699,11 @@ function silverstone(cols: number, rows: number): Sim {
       g.put(sx, sy, "#", 0.75);
       trail.forEach((k, m) => {
         const [x, y] = at(k);
-        g.put(x, y, m < 3 ? "=" : "-", 0.62 - m * 0.05);
+        g.put(x, y, m < 3 ? "=" : "-", 0.62 - m * 0.05, "green");
       });
+      // The car in the team's green.
       const [x, y] = at(s);
-      g.put(x, y, "@", 1, true);
+      g.put(x, y, "@", 1, "green");
       if (foot) {
         g.put(2, rows - 2, `${Math.round(kph)} km/h`.padStart(9), 0.55);
         const b = `best ${fmt(best)}`;
@@ -788,9 +790,9 @@ function fund(cols: number, rows: number): Sim {
       if (cols > 36) g.put(7, 1, "London, 7 assets", 0.24);
       const head = `£${total.toFixed(1)}m`;
       g.put(cols - 2 - head.length, 1, head, 0.6);
-      if (top >= 5) nav.forEach((q, k) => g.put(2 + k, 2 + Math.round((1 - q) * 2), k === nav.length - 1 ? "*" : ".", k === nav.length - 1 ? 0.8 : 0.25, k === nav.length - 1));
+      if (top >= 5) nav.forEach((q, k) => g.put(2 + k, 2 + Math.round((1 - q) * 2), k === nav.length - 1 ? "*" : ".", k === nav.length - 1 ? 0.8 : 0.25, k === nav.length - 1 ? "green" : false));
       // The river flows east, a character at a time.
-      river.forEach(([x, y], k) => g.put(x, y, (Math.floor(k / 2 - t * 3) & 3) === 0 ? "-" : "~", 0.42, false, true));
+      river.forEach(([x, y], k) => g.put(x, y, (Math.floor(k / 2 - t * 3) & 3) === 0 ? "-" : "~", 0.46, "blue", true));
       const [rx, ry] = river[Math.floor(river.length * 0.05)];
       g.put(rx, ry + 1, "thames", 0.22);
       pins.forEach(([x, y], k) => {
@@ -872,7 +874,10 @@ function glove(cols: number, rows: number): Sim {
     },
     draw(g) {
       g.put(2, 1, "IACT", 0.5);
-      if (cols > 36) g.put(7, 1, "gloves L R connected", 0.24);
+      if (cols > 36) {
+        g.put(7, 1, "gloves L R", 0.24);
+        g.put(18, 1, "connected", 0.5, "green");
+      }
       const c = `ROUND ${round}  ${Math.floor(clock / 60)}:${String(Math.floor(clock % 60)).padStart(2, "0")}`;
       g.put(cols - 2 - c.length, 1, c, 0.6);
       lanes.forEach((y, k) => {
@@ -1044,7 +1049,7 @@ function voicenote(cols: number, rows: number): Sim {
         }
         for (const [cx, cy] of [[x, y], [x + ww - 1, y], [x, y + wh - 1], [x + ww - 1, y + wh - 1]]) g.put(cx, cy, "+", al);
         g.put(x + 2, y, ` ${app.title} `.slice(0, Math.max(0, ww - 4)), (p > 0 ? 0.7 : 0.3) * fade);
-        if (live && ww > 12) g.put(x + ww - 8, y, Math.floor(time * 2) % 2 ? " * live" : "   live", 0.9 * fade, true);
+        if (live && ww > 12) g.put(x + ww - 8, y, Math.floor(time * 2) % 2 ? " * live" : "   live", 0.9 * fade, "green");
         // The body types itself out as the note plays over this window's quarter.
         let left = Math.floor(totals[k] * p);
         shown[k].forEach((l, n) => {
@@ -1114,7 +1119,7 @@ function feed(cols: number, rows: number): Sim {
         if (inside(y)) g.put(px + 2, y, p.who, 0.55);
         p.tex.forEach((row, n) => inside(y + 1 + n) && g.put(px + 2, y + 1 + n, row, 0.3));
         const likes = p.likes >= 1000 ? `${(p.likes / 1000).toFixed(1)}k` : `${p.likes}`;
-        if (inside(y + 4)) g.put(px + 2, y + 4, `<3 ${likes}`, 0.7, k === 1);
+        if (inside(y + 4)) g.put(px + 2, y + 4, `<3 ${likes}`, 0.7, k === 1 ? "pink" : false);
       });
       if (cols > 40) {
         const rx = px + pw + 4;
@@ -1161,12 +1166,12 @@ function network(cols: number, rows: number): Sim {
         }
         // The strong weights carry a pulse across while their layer is firing.
         const f = (t - e.l * HOP) / HOP;
-        if (e.w > 0.55 && f > 0 && f < 1) g.put(e.a[0] + (e.b[0] - e.a[0]) * f, e.a[1] + (e.b[1] - e.a[1]) * f, "*", 0.9);
+        if (e.w > 0.55 && f > 0 && f < 1) g.put(e.a[0] + (e.b[0] - e.a[0]) * f, e.a[1] + (e.b[1] - e.a[1]) * f, "*", 0.9, "violet");
       }
       nodes.forEach((ns, l) =>
         ns.forEach(([x, y]) => {
           const on = t > l * HOP && t < l * HOP + HOP * 1.6;
-          g.put(x, y, on ? "O" : "o", on ? 1 : 0.4, on && l === 0);
+          g.put(x, y, on ? "O" : "o", on ? 1 : 0.4, on ? "violet" : false);
         }),
       );
       nodes[nodes.length - 1].forEach(([x, y], k) => {
@@ -1197,7 +1202,7 @@ function waves(cols: number, rows: number): Sim {
           // Only the crests are drawn, so the pattern reads as lines on a dark tank.
           if (v < 0.6) continue;
           const k = Math.round(((v - 0.6) / 0.4) * (RAMP.length - 1));
-          if (k > 0) g.put(c, r, RAMP[k], 0.15 + 0.75 * (v - 0.6) / 0.4);
+          if (k > 0) g.put(c, r, RAMP[k], 0.15 + 0.75 * (v - 0.6) / 0.4, v > 0.88 ? "blue" : false);
         }
       }
       g.put(s1[0], s1[1], "*", 1, true);
@@ -1237,7 +1242,7 @@ function dubai(cols: number, rows: number): Sim {
           const d = Math.hypot((c - sun[0]) * ASPECT, r - sun[1]) / sr;
           if (d < 1.9) {
             const v = d < 1 ? 0.55 : 0.55 * (1 - (d - 1) / 0.9);
-            g.put(c, r, RAMP[Math.round(v * (RAMP.length - 1))], 0.15 + v * 0.5);
+            g.put(c, r, RAMP[Math.round(v * (RAMP.length - 1))], 0.15 + v * 0.5, d < 0.55);
           }
         }
       }
@@ -1272,7 +1277,7 @@ function dubai(cols: number, rows: number): Sim {
           const wob = Math.sin(c * 0.5 + t * 2 + r) * 0.5 + 0.5;
           const refl = Math.abs(c - sun[0] + Math.sin(t * 3 + r) * 1.5) < sr * 0.9;
           if (refl && wob > 0.3) g.put(c, r, "=", 0.6 * (1 - (r - hz) / (rows - hz + 1)));
-          else if (wob > 0.75) g.put(c, r, "~", 0.18);
+          else if (wob > 0.75) g.put(c, r, "~", 0.22, "blue");
         }
       }
       for (let c = 0; c < cols; c++) g.put(c, hz, "-", 0.35);

@@ -11,10 +11,12 @@ const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": proce
   const url = process.argv[2] || "http://localhost:3110/";
   const b = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
   let failed = 0;
+  // The home page and a project page, in both themes.
+  for (const path of ["", "projects/ingest"])
   for (const scheme of ["dark", "light"])
   for (const [w, h] of [[320, 640], [375, 667], [390, 844], [768, 1024], [1280, 800], [1512, 945]]) {
     const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: w < 800, hasTouch: w < 800, colorScheme: scheme, extraHTTPHeaders: bypass });
-    await p.goto(url, { waitUntil: "networkidle" });
+    await p.goto(url.replace(/\/?$/, "/") + path, { waitUntil: "networkidle" });
     await p.waitForTimeout(800);
     const r = await p.evaluate(() => {
       const vw = document.documentElement.clientWidth;
@@ -28,7 +30,7 @@ const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": proce
     });
     const ok = r.scroll <= r.vw;
     if (!ok) failed++;
-    console.log(`${scheme} ${w}px: page ${r.scroll}px wide ${ok ? "ok" : "FAIL " + JSON.stringify(r.over)}`);
+    console.log(`/${path} ${scheme} ${w}px: page ${r.scroll}px wide ${ok ? "ok" : "FAIL " + JSON.stringify(r.over)}`);
     await p.close();
   }
   await b.close();

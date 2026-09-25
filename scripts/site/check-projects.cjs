@@ -1,119 +1,104 @@
-// Checks the Projects section's detail sheet: each tile opens it at its own address with focus
-// inside; the arrow keys move between projects; Esc and the browser's Back both close it and
-// give focus back to the tile; the page behind cannot scroll while it is open; and on a phone
-// the sheet fills the screen and its detail scrolls to the end.
+// Checks the project pages: each tile opens /projects/<id> with its name, a breadcrumb and its
+// scene; picking a step selects it; moving on from a project's last step to one with fewer steps
+// keeps the page working (it once asked for a step the next project did not have); the arrow keys
+// and Esc move between projects and back; Back and the breadcrumb return to Projects on the home
+// page; old #projects/<id> links land on the page; and a phone never scrolls sideways.
 // Usage: NODE_PATH=$PWD/node_modules node scripts/site/check-projects.cjs [url]
 const { chromium } = require("playwright");
 
 const bypass = process.env.VERCEL_BYPASS ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS } : undefined;
 
 (async () => {
-  const url = process.argv[2] || "http://localhost:3110/";
+  const base = (process.argv[2] || "http://localhost:3110/").replace(/\/?$/, "/");
   const b = await chromium.launch(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {});
   let failed = 0;
   const check = (ok, what) => {
     if (!ok) failed++;
     console.log(`${ok ? "ok  " : "FAIL"} ${what}`);
   };
+  const projectsInView = (p) =>
+    p.evaluate(() => {
+      const r = document.querySelector("#projects")?.getBoundingClientRect();
+      return !!r && r.top < innerHeight * 0.5 && r.bottom > 0;
+    });
+
   for (const [w, h] of [[1512, 945], [390, 844]]) {
     const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: w < 800, hasTouch: w < 800, colorScheme: "dark", extraHTTPHeaders: bypass });
-    await p.goto(url, { waitUntil: "networkidle" });
-    const tiles = p.locator("#projects button[data-size]");
-    const n = await tiles.count();
+    const errors = [];
+    p.on("pageerror", (e) => errors.push(String(e)));
+    await p.goto(base, { waitUntil: "networkidle" });
+    const n = await p.locator("#projects a[data-size]").count();
+
     for (let i = 0; i < n; i++) {
-      await tiles.nth(i).scrollIntoViewIfNeeded();
-      await tiles.nth(i).click();
+      await p.goto(base, { waitUntil: "networkidle" });
+      const tile = p.locator("#projects a[data-size]").nth(i);
+      await tile.scrollIntoViewIfNeeded();
+      const name = (await tile.getAttribute("aria-label"))?.split(",")[0];
+      await tile.click();
+      await p.waitForURL(/\/projects\/[\w-]+$/);
       await p.waitForTimeout(700);
-      const s = await p.evaluate(() => {
-        const d = document.querySelector("[role=dialog]");
-        const r = d?.getBoundingClientRect();
-        return {
-          open: !!d,
-          hash: location.hash,
-          focusIn: !!d && d.contains(document.activeElement),
-          locked: document.documentElement.style.overflow === "hidden",
-          // A phone gets the whole screen; a desktop gets a large sheet with the page around it.
-          fills: !!r && (innerWidth < 800 ? r.width >= innerWidth - 1 && r.height >= innerHeight - 1 : r.width >= innerWidth * 0.8 && r.height >= innerHeight * 0.85),
-        };
-      });
-      check(s.open && s.hash.startsWith("#projects/") && s.focusIn && s.locked && s.fills, `${w}px project ${i + 1}: sheet open at ${s.hash}, focus inside, page held, ${w < 800 ? "fills the screen" : "large sheet"}`);
-      if (i === 0) {
-        // Step picking shows that step's text.
-        const texts = await p.locator("[role=dialog] [role=tab]").count();
-        await p.locator("[role=dialog] [role=tab]").nth(Math.min(2, texts - 1)).click();
-        const sel = await p.evaluate(() => document.querySelector("[role=dialog] [role=tab][aria-selected=true] span:last-child")?.textContent);
-        check(!!sel, `${w}px picking a step selects it (${sel})`);
-        // The detail scrolls to its end.
-        const end = await p.evaluate(() => {
-          const d = document.querySelector("[role=dialog]");
-          const scroller = [...d.querySelectorAll("*")].find((e) => e.scrollHeight > e.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(e).overflowY));
-          if (scroller) scroller.scrollTop = scroller.scrollHeight;
-          const chips = d.querySelector("h4:last-of-type")?.getBoundingClientRect();
-          return chips ? chips.bottom <= innerHeight + 1 : false;
-        });
-        check(end, `${w}px the detail scrolls to "Built with"`);
-        // Arrow keys move to the next project.
-        await p.keyboard.press("Escape");
-        await p.waitForTimeout(500);
-        await tiles.nth(0).click();
-        await p.waitForTimeout(600);
-        const before = await p.evaluate(() => location.hash);
-        await p.locator("[role=dialog] [data-close]").focus();
-        await p.keyboard.press("ArrowRight");
-        await p.waitForTimeout(400);
-        const after = await p.evaluate(() => location.hash);
-        check(before !== after && after.startsWith("#projects/"), `${w}px the right arrow moves to the next project (${before} to ${after})`);
-        // Back closes it.
-        await p.goBack();
-        await p.waitForTimeout(600);
-        const closed = await p.evaluate(() => !document.querySelector("[role=dialog]") && document.documentElement.style.overflow !== "hidden");
-        check(closed, `${w}px the browser's Back closes the sheet and frees the page`);
-        continue;
-      }
-      await p.keyboard.press("Escape");
-      await p.waitForTimeout(600);
-      const after = await p.evaluate((i) => ({
-        open: !!document.querySelector("[role=dialog]"),
-        back: document.activeElement === document.querySelectorAll("#projects button[data-size]")[i],
-        hash: location.hash,
-      }), i);
-      check(!after.open && after.back && !/projects\//.test(after.hash), `${w}px project ${i + 1}: Esc closes, focus back on the tile, address ${after.hash || "(none)"}`);
+      const s = await p.evaluate(() => ({
+        path: location.pathname,
+        h1: document.querySelector("h1")?.textContent,
+        crumbs: [...document.querySelectorAll("nav[aria-label=Breadcrumb] li")].map((li) => li.textContent.trim()),
+        current: document.querySelector("nav[aria-label=Breadcrumb] [aria-current=page]")?.textContent.trim(),
+        scene: !!document.querySelector("main canvas"),
+        wide: document.documentElement.scrollWidth > innerWidth + 1,
+      }));
+      check(s.h1 === name && s.current === name && s.crumbs.length === 3 && s.scene && !s.wide, `${w}px ${name}: ${s.path}, breadcrumb ${s.crumbs.join(" / ")}, scene drawn, no sideways scroll`);
     }
-    // Moving on from a late step of a project to one with fewer steps must not break the sheet
-    // (it once asked the next project for a step it did not have, and the sheet vanished).
-    {
-      const errors = [];
-      const onErr = (e) => errors.push(String(e));
-      p.on("pageerror", onErr);
-      let alive = false;
-      try {
-        await tiles.nth(1).scrollIntoViewIfNeeded();
-        await tiles.nth(1).click();
-        await p.waitForTimeout(600);
-        const steps = p.locator("[role=dialog] [role=tab]");
-        await steps.nth((await steps.count()) - 1).click();
-        await p.waitForTimeout(300);
-        for (const label of ["Next project", "Next project", "Previous project", "Previous project", "Previous project"]) {
-          await p.locator(`[role=dialog] button[aria-label='${label}']`).click({ timeout: 3000 });
-          await p.waitForTimeout(350);
-          const tabs = p.locator("[role=dialog] [role=tab]");
-          await tabs.nth((await tabs.count()) - 1).click({ timeout: 3000 });
-          await p.waitForTimeout(250);
-        }
-        alive = await p.evaluate(() => !!document.querySelector("[role=dialog] [role=tabpanel]"));
-      } catch {
-        alive = false;
-      }
-      p.off("pageerror", onErr);
-      check(alive && errors.length === 0, `${w}px moving between projects from their last steps keeps the sheet (${errors.length} page errors)`);
-      await p.keyboard.press("Escape");
-      await p.waitForTimeout(500);
-    }
-    // Opening straight from an address.
-    await p.goto(url.replace(/#.*$/, "") + "#projects/cortex", { waitUntil: "networkidle" });
-    await p.waitForTimeout(800);
-    const direct = await p.evaluate(() => document.querySelector("[role=dialog] h3")?.textContent);
-    check(direct === "Cortex", `${w}px #projects/cortex opens Cortex directly (${direct})`);
+
+    // Steps, and moving on from a last step into a project with fewer steps.
+    await p.goto(base + "projects/ingest", { waitUntil: "networkidle" });
+    const steps = p.locator("main ol button[aria-controls]");
+    await steps.nth(2).click();
+    await p.waitForTimeout(300);
+    const picked = await p.evaluate(() => document.querySelector("main ol button[aria-current=step] span:last-of-type")?.textContent);
+    check(picked === "Silver", `${w}px picking a step selects it (${picked})`);
+    const before = errors.length;
+    await steps.nth((await steps.count()) - 1).click();
+    await p.locator("a[aria-label^='Next project']").click();
+    await p.waitForURL(/\/projects\/cortex$/);
+    await p.waitForFunction(() => document.querySelector("h1")?.textContent === "Cortex", null, { timeout: 15000 }).catch(() => {});
+    await p.waitForTimeout(300);
+    const cortex = await p.evaluate(() => ({ h1: document.querySelector("h1")?.textContent, on: document.querySelector("main ol button[aria-current=step] span:last-of-type")?.textContent }));
+    check(cortex.h1 === "Cortex" && cortex.on === "Sync" && errors.length === before, `${w}px from the engine's last step, Next opens Cortex at its first step (${cortex.on}), no page errors`);
+
+    // Keys: right arrow to the next project, Esc back to Projects.
+    await p.keyboard.press("ArrowRight");
+    await p.waitForURL(/\/projects\/scout$/);
+    check(true, `${w}px the right arrow moves to the next project (scout)`);
+    await p.keyboard.press("Escape");
+    await p.waitForURL((u) => u.pathname === "/");
+    await p.waitForTimeout(900);
+    check(await projectsInView(p), `${w}px Esc goes back to Projects on the home page`);
+
+    // Back from a project page lands on Projects, and so does the breadcrumb.
+    await p.goto(base, { waitUntil: "networkidle" });
+    await p.locator("#projects a[data-size]").nth(2).scrollIntoViewIfNeeded();
+    await p.waitForTimeout(400);
+    await p.locator("#projects a[data-size]").nth(2).click();
+    await p.waitForURL(/\/projects\//);
+    await p.waitForTimeout(500);
+    await p.goBack();
+    await p.waitForURL((u) => u.pathname === "/");
+    await p.waitForTimeout(900);
+    check(await projectsInView(p), `${w}px Back from a project returns to Projects`);
+    await p.goto(base + "projects/symphony", { waitUntil: "networkidle" });
+    const crumb = p.locator("nav[aria-label=Breadcrumb] a", { hasText: "Projects" });
+    await crumb.click();
+    await p.waitForURL((u) => u.pathname === "/");
+    await p.waitForTimeout(900);
+    check(await projectsInView(p), `${w}px the breadcrumb's Projects returns to Projects`);
+
+    // Old links from when projects opened over the page.
+    // (Loaded fresh, as a link from elsewhere would be.)
+    await p.goto("about:blank");
+    await p.goto(base + "#projects/scout", { waitUntil: "networkidle" });
+    await p.waitForURL(/\/projects\/scout$/, { timeout: 5000 }).catch(() => {});
+    check(new URL(p.url()).pathname === "/projects/scout", `${w}px an old #projects/scout link lands on /projects/scout`);
+
+    check(errors.length === 0, `${w}px no page errors (${errors.length})`);
     await p.close();
   }
   await b.close();

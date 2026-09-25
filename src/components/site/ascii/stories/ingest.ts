@@ -1,4 +1,4 @@
-import { clamp, type Grid, type Sim } from "../grid";
+import { clamp, type Grid, type Sim, type Tone } from "../grid";
 
 // ImpactOS engine: the detail sheet's scene, acting out each step of "How it works" (see the steps
 // for "ingest" in src/data/cv.ts). One set of pieces plays every step: three client files drop in
@@ -494,7 +494,7 @@ export function ingestFlow(cols: number, rows: number): Sim {
     }
   }
 
-  function put(g: Grid, x: number, y: number, ch: string, a: number, hot = false, top = false) {
+  function put(g: Grid, x: number, y: number, ch: string, a: number, hot: boolean | Tone = false, top = false) {
     if (ch === " " || !ch || a < 0.02) return;
     if (x < 1 || x > cols - 2 || y > rows - 2 || y < (top ? 1 : 3)) return;
     g.put(x, y, ch, a, hot);
@@ -528,7 +528,7 @@ export function ingestFlow(cols: number, rows: number): Sim {
   // pres below 1 scrambles it out (or in), a cell at a time.
   function writer(g: Grid, pres: number, salt: number) {
     const tick = Math.floor(clock * 20);
-    return (x: number, y: number, s: string, a: number, hot = false) => {
+    return (x: number, y: number, s: string, a: number, hot: boolean | Tone = false) => {
       for (let k = 0; k < s.length; k++) {
         const ch = s[k];
         if (ch === " ") continue;
@@ -554,7 +554,7 @@ export function ingestFlow(cols: number, rows: number): Sim {
     if (step === 0) {
       files.forEach((f, i) => {
         const r = ts - landAt[i];
-        if (r >= 0) w(up[i].x, up[i].metaY, r < 0.5 ? "received" : f.meta, r < 0.5 ? 0.9 : 0.28, r < 0.5);
+        if (r >= 0) w(up[i].x, up[i].metaY, r < 0.5 ? "received" : f.meta, r < 0.5 ? 0.9 : 0.28, r < 0.5 ? "green" : false);
       });
       // More files keep arriving, each dropping into the pile of its kind.
       let landed = 0;
@@ -630,7 +630,7 @@ export function ingestFlow(cols: number, rows: number): Sim {
           const shown = roll ? score.slice(0, 4) + String(Math.floor(hash(n, Math.floor(clock * 24)) * 30) + 70) : score;
           if (prog > 0) w(methX, y, shown, lit ? 1 : 0.3, lit);
           const cnt = Math.ceil(prog * path.length);
-          for (let c = 0; c < cnt; c++) w(path[c][0], path[c][1], path[c][2], lit ? 0.85 : 0.22, lit);
+          for (let c = 0; c < cnt; c++) w(path[c][0], path[c][1], path[c][2], lit ? 0.85 : 0.26, "blue");
           if (lit) {
             w(sx, y, s, 1);
             w(fx, ty, FIELD[grp.f], 1);
@@ -651,8 +651,8 @@ export function ingestFlow(cols: number, rows: number): Sim {
         const n = Math.ceil(grow * (e0 - s0 + 1));
         if (k === hi) {
           for (let x = s0; x <= e0; x++) w(x, y, "-", 0.5);
-          w(e0, y, ">", 1, true);
-          w(codeX, y, code, 1);
+          w(e0, y, ">", 1, "green");
+          w(codeX, y, code, 1, "green");
           if (labels && item) w(codeX + 8, y, item[1], 0.8);
         } else for (let c = 0; c < n; c++) if ((c & 1) === 0) w(s0 + c, y, ".", 0.2);
       });
@@ -674,15 +674,15 @@ export function ingestFlow(cols: number, rows: number): Sim {
       if (pa > 0) {
         const wa = writer(g, Math.min(pres, pa), 60 + phase);
         wa(ax, y5 + 6, `= ${q.ans}`, 1, true);
-        wa(ax + 2, y5 + 7, `cites ${q.cites.map((c) => `r${c + 1}`).join(", ")}`, 0.45);
+        wa(ax + 2, y5 + 7, `cites ${q.cites.map((c) => `r${c + 1}`).join(", ")}`, 0.55, "blue");
         q.cites.forEach((c) => {
           const [key, src] = SOURCE_ROWS[c];
           const y = rowY5(c);
-          wa(ax, y, `r${c + 1}`, 0.7);
+          wa(ax, y, `r${c + 1}`, 0.7, "blue");
           wa(ax + 4, y, FIELD[key], 0.95);
           wa(ax + 21, y, VALUE[key], 0.95);
           wa(ax + 29, y, src, 0.6);
-          wa(ax + 38, y, "<", 1, true);
+          wa(ax + 38, y, "<", 1, "blue");
         });
       }
     } else if (step === 5) {
@@ -698,8 +698,8 @@ export function ingestFlow(cols: number, rows: number): Sim {
         const val = VALUE[key];
         const ok = local >= 0;
         const rw = ok ? wr : w;
-        rw(qx + 32, dY(k), ok ? "[x]" : "[ ]", ok ? 0.8 : 0.3, ok && local < 0.3);
-        if (W >= 52) rw(qx + 36, dY(k), ok ? "approved" : "pending", ok ? 0.4 : 0.2);
+        rw(qx + 32, dY(k), ok ? "[x]" : "[ ]", ok ? 0.8 : 0.3, ok ? "green" : false);
+        if (W >= 52) rw(qx + 36, dY(k), ok ? "approved" : "pending", ok ? 0.55 : 0.2, ok ? "green" : false);
         w(qx + 7, pY(k), "[", 0.22);
         w(qx + 20, pY(k), "]", 0.22);
         if (local >= 0.1 && local < 0.4) {
@@ -712,7 +712,7 @@ export function ingestFlow(cols: number, rows: number): Sim {
           wr(qx + 9, pY(k), val.slice(0, n), local >= 1 ? 0.8 : 0.95);
           if (n < val.length) wr(qx + 9 + n, pY(k), "_", 1, true);
           else if (local < 1) wr(qx + 22, pY(k), "..", 0.4);
-          else wr(qx + 22, pY(k), "ok", local < 1.3 ? 1 : 0.6, local < 1.3);
+          else wr(qx + 22, pY(k), "ok", local < 1.3 ? 1 : 0.6, "green");
         }
       });
       const agent = W >= 52 ? "computer-use agent" : "agent";
@@ -723,7 +723,7 @@ export function ingestFlow(cols: number, rows: number): Sim {
       w(qx, cntY, "checked", 0.3);
       w(qx + 8, cntY, `${fmt(n)} / 3,345`, done ? 0.9 : 0.55);
       const mt = "matched 96%";
-      w(R - m6 - mt.length + 1, cntY, mt, done ? 1 : 0.6, done);
+      w(R - m6 - mt.length + 1, cntY, mt, done ? 1 : 0.6, done ? "green" : false);
     }
   }
 

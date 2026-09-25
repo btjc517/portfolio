@@ -1,4 +1,4 @@
-import { clamp, Grid, type Sim } from "../grid";
+import { clamp, Grid, type Sim, type Tone } from "../grid";
 
 // Symphony: the detail sheet's scene, acting out each step of "How it works" (see the steps for
 // "symphony" in src/data/cv.ts). One job, SYM-412, is the thread through every step: it is a row
@@ -110,7 +110,7 @@ function wrap(text: string, w: number): string[] {
   return out;
 }
 
-const right = (g: Grid, x1: number, y: number, text: string, a: number, hot = false) => g.put(x1 - text.length + 1, y, text, a, hot);
+const right = (g: Grid, x1: number, y: number, text: string, a: number, hot: boolean | Tone = false) => g.put(x1 - text.length + 1, y, text, a, hot);
 
 // ---- What each step shows ------------------------------------------------------------------------
 
@@ -315,7 +315,7 @@ export function symphonyFlow(cols: number, rows: number): Sim {
   const sinceLand = (s: number) => (landed < 0 ? -1 : s - landed);
 
   // Text that scrambles into place over dur seconds from start.
-  function reveal(g: Grid, x: number, y: number, text: string, a: number, s: number, start: number, dur = 0.35, hot = false) {
+  function reveal(g: Grid, x: number, y: number, text: string, a: number, s: number, start: number, dur = 0.35, hot: boolean | Tone = false) {
     if (s < start) return;
     const p = (s - start) / dur;
     if (p >= 1) {
@@ -380,8 +380,8 @@ export function symphonyFlow(cols: number, rows: number): Sim {
         const flash = s - claimT < 0.7;
         const a = ours ? 0.85 : passing ? 0.75 : flash ? 0.7 : 0.4;
         const text = claimed.padStart(9);
-        if (s - claimT < 0.35) reveal(g, x1 - 10, y, text, a, s, claimT, 0.35, ours);
-        else g.put(x1 - 10, y, text, a, ours && flash);
+        if (s - claimT < 0.35) reveal(g, x1 - 10, y, text, a, s, claimT, 0.35, ours ? true : "violet");
+        else g.put(x1 - 10, y, text, a, ours && flash ? true : "violet");
       } else g.put(x1 - 10, y, "todo".padStart(9), 0.25);
       if (passing) g.put(x0 + 2, y, ">", 0.9);
     }
@@ -396,10 +396,10 @@ export function symphonyFlow(cols: number, rows: number): Sim {
       const pos = Math.floor(time * 12 + i * 17) % (n * 2 + 8);
       if (pos < n * 2) {
         const idx = pos < n ? pos : n * 2 - 1 - pos;
-        g.put(ln[idx][0], ln[idx][1], "*", 0.45);
+        g.put(ln[idx][0], ln[idx][1], "*", 0.55, "blue");
       }
     });
-    g.put(cx - 4, meshY + 1, "tailscale", 0.3);
+    g.put(cx - 4, meshY + 1, "tailscale", 0.4, "blue");
     g.put(mbp.x0, mbp.y0 - 1, "agent-cloud", 0.4);
     box(g, mbp, 0.2);
     box(g, dh, 0.2);
@@ -478,8 +478,8 @@ export function symphonyFlow(cols: number, rows: number): Sim {
     }
     const agent = "claude";
     const status = u < typedAt ? "writing" : u < typedAt + 1.3 ? "checking" : "checks pass";
-    right(g, x1 - 2, y0 + 1, status, status === "checks pass" ? 0.7 : 0.45);
-    right(g, x1 - 3 - status.length, y0 + 1, agent, 0.6);
+    right(g, x1 - 2, y0 + 1, status, status === "checks pass" ? 0.7 : 0.45, status === "checks pass" ? "green" : false);
+    right(g, x1 - 3 - status.length, y0 + 1, agent, 0.6, "violet");
     if (caret && Math.floor(time * 3) % 2 === 0) g.put(caret[0], caret[1], "_", 0.9);
     // Checks: two columns, each a spinner until it passes.
     const cy0 = TB.y1 - 3;
@@ -493,8 +493,8 @@ export function symphonyFlow(cols: number, rows: number): Sim {
       g.put(x, yy, name, u >= st ? 0.5 : 0.25);
       const vx = x + 8;
       if (u >= done && !out) {
-        if (u - done < 0.3) reveal(g, vx, yy, ok, 0.75, u, done, 0.3);
-        else g.put(vx, yy, ok, 0.75);
+        if (u - done < 0.3) reveal(g, vx, yy, ok, 0.75, u, done, 0.3, "green");
+        else g.put(vx, yy, ok, 0.75, "green");
       } else if (u >= st && !out) g.put(vx, yy, "|/-\\"[Math.floor(time * 10 + k) % 4], 0.6);
       else g.put(vx, yy, ".", 0.2);
     });
@@ -506,14 +506,14 @@ export function symphonyFlow(cols: number, rows: number): Sim {
     const a = Math.max(0.2, landed < 0 ? 0.2 : landed);
     const u = s - a;
     // Who is on each side of the review.
-    g.put(x0, labelY, "claude", 0.65);
+    g.put(x0, labelY, "claude", 0.65, "violet");
     g.put(x0 + 7, labelY, "builder", 0.3);
     const rev = "codex";
     const verdictAt = 2.7;
     const FIX = 1.15; // when the builder's fixes land
     const role = u >= verdictAt ? "approved" : "reviewer";
-    right(g, x1, labelY, role, u >= verdictAt ? 0.6 : 0.3);
-    right(g, x1 - role.length - 1, labelY, rev, 0.65);
+    right(g, x1, labelY, role, u >= verdictAt ? 0.6 : 0.3, u >= verdictAt ? "green" : false);
+    right(g, x1 - role.length - 1, labelY, rev, 0.65, "violet");
     // The channel between them: findings go left, fixes come back.
     for (let x = x0; x <= x1; x += 2) g.put(x, chanY, ".", 0.12);
     const span = x1 - x0;
@@ -569,7 +569,7 @@ export function symphonyFlow(cols: number, rows: number): Sim {
     // The verdict.
     const vy = RB.y1 - 2;
     g.put(x0 + 2, vy, "verdict", 0.3);
-    if (u >= verdictAt) reveal(g, x0 + 11, vy, "clean", 1, u, verdictAt, 0.35, true);
+    if (u >= verdictAt) reveal(g, x0 + 11, vy, "clean", 1, u, verdictAt, 0.35, "green");
     else if (u >= 0.4) g.put(x0 + 11, vy, round === 2 ? "re-reading" : u >= FIX ? "2 fixed" : "2 findings", 0.55);
     if (u >= verdictAt) g.put(x0 + 18, vy, "0 findings, round 2", 0.35);
   }
@@ -649,7 +649,7 @@ export function symphonyFlow(cols: number, rows: number): Sim {
     g.put(mx0, yB, "#231", 0.35);
     for (let x = bx0; x < xh - 1; x++) g.put(x, yB, "-", 0.16);
     g.put(xh - 1, yM + 1, "/", 0.3);
-    if (land >= 0) reveal(g, xh + 2, yM - 1, "merged", 0.55, s, landed, 0.35);
+    if (land >= 0) reveal(g, xh + 2, yM - 1, "merged", 0.7, s, landed, 0.35, "green");
     // Who may do what.
     const t0 = 0.5;
     if (s >= t0) {
@@ -663,7 +663,7 @@ export function symphonyFlow(cols: number, rows: number): Sim {
         const y = yT + 1 + k;
         const st = t0 + 0.1 * (k + 1);
         const trying = k > 0 && tryN >= 0 && 1 + (tryN % 2) === k && tryU < 1.1;
-        reveal(g, mx0, y, w, k === 0 ? 0.75 : trying ? 0.7 : 0.5, s, st);
+        reveal(g, mx0, y, w, k === 0 ? 0.75 : trying ? 0.7 : 0.5, s, st, 0.35, k === 0 ? false : "violet");
         const yes = k === 0;
         reveal(g, mx0 + 15, y, yes ? "yes" : "no", yes ? 0.7 : trying ? 0.9 : 0.3, s, st);
         reveal(g, mx0 + 23, y, yes ? "yes" : "no", yes ? 0.7 : trying ? 0.9 : 0.3, s, st);

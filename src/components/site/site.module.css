@@ -11,6 +11,13 @@
   --line: rgba(236, 235, 230, 0.085);
   --line-2: rgba(236, 235, 230, 0.16);
   --accent: #ff5b1f;
+  /* Four quieter hues, each with one meaning (see TONES in ascii/grid.ts): green is done, passed
+     or ESG; blue is data and structure; violet is AI and agents; pink is creators and social.
+     Matched in lightness so no one shouts; orange stays the only loud colour. */
+  --green: #79d4a1;
+  --blue: #86c2ff;
+  --violet: #bfb0ff;
+  --pink: #f79ec5;
   --glass: color-mix(in srgb, var(--bg) 86%, transparent);
   --hover: #fff;
   --pad: clamp(20px, 3.2vw, 48px);
@@ -44,6 +51,10 @@
   --line: rgba(21, 21, 19, 0.1);
   --line-2: rgba(21, 21, 19, 0.18);
   --accent: #e8521a;
+  --green: #007e4b;
+  --blue: #256bb1;
+  --violet: #6c58ad;
+  --pink: #9f4471;
   --hover: #000;
 }
 
@@ -901,60 +912,127 @@
   color: var(--ink);
 }
 
-/* The detail sheet, over the page. */
-.caseLayer {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
+/* A colour dot for a project or role; set --hue on it or on an ancestor. */
+.hueDot {
+  display: inline-block;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--hue, var(--ink-3));
+  vertical-align: 1px;
+  transition: background-color 0.4s var(--ease);
 }
-.caseBackdrop {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: caseFade 0.35s var(--ease) both;
-}
-.case {
-  position: absolute;
-  inset: clamp(12px, 3vh, 40px) clamp(12px, 3vw, 48px);
-  max-width: 1360px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-  border: 1px solid var(--line-2);
-  box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.6);
-  animation: caseRise 0.5s var(--ease) both;
-}
-@keyframes caseFade {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes caseRise {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.99);
-  }
-}
-.caseBar {
+
+/* A project's page: breadcrumb and arrows in the bar, the scene pinned on the left. */
+.crumbs ol {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 14px 12px 20px;
-  border-bottom: 1px solid var(--line);
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.crumbs li {
+  display: inline-flex;
+  align-items: center;
   color: var(--ink-3);
 }
-.caseIdx {
+.crumbs li + li::before {
+  content: "/";
+  margin-right: 10px;
+  color: var(--ink-4);
+}
+.crumbs a {
+  color: var(--ink-2);
+  transition: color 0.25s var(--ease);
+}
+.crumbs a:hover {
   color: var(--ink);
 }
-.caseNav {
-  margin-left: auto;
+.crumbs [aria-current] {
+  color: var(--ink);
+  font-weight: 500;
+}
+.ppNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ppCount {
+  margin-right: 6px;
+  color: var(--ink-3);
+}
+.ppArrow {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  color: var(--ink-2);
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.ppArrow:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+.pp {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gap);
+  padding: 84px var(--pad) 0;
+  animation: ppIn 0.6s var(--ease) both;
+}
+@keyframes ppIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.ppStage {
+  grid-column: 1 / span 7;
+  align-self: start;
+  position: sticky;
+  top: 76px;
+  height: calc(100svh - 100px);
+  display: flex;
+  flex-direction: column;
+}
+/* The scene runs out through the page margin to the edge of the window. */
+.ppScreen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin-left: calc(-1 * var(--pad));
+}
+.ppScreen canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ppControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  color: var(--ink-3);
+}
+.ppNow {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-2);
+}
+.caseControls {
   display: flex;
   gap: 6px;
 }
-.caseNav button,
 .caseControls button {
   all: unset;
   cursor: pointer;
@@ -964,14 +1042,11 @@
   color: var(--ink-2);
   transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background-color 0.2s var(--ease);
 }
-.caseNav button:hover,
 .caseControls button:hover {
   color: var(--ink);
   border-color: var(--ink-3);
 }
-.caseNav button:focus-visible,
-.caseControls button:focus-visible,
-.flowStep:focus-visible {
+.caseControls button:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 2px;
 }
@@ -980,141 +1055,122 @@
   background: var(--ink);
   border-color: var(--ink);
 }
-.caseBody {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+.ppBody {
+  grid-column: 8 / -1;
+  min-width: 0;
+  padding: clamp(8px, 2vw, 32px) 0 0 clamp(8px, 1.6vw, 28px);
 }
-.caseStage {
+.ppKind {
   display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-right: 1px solid var(--line);
-}
-.caseScreen {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-.caseScreen canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.caseControls {
-  display: flex;
-  gap: 6px;
-  padding: 12px 14px;
-  border-top: 1px solid var(--line);
-}
-.caseInfo {
-  min-height: 0;
-  overflow-y: auto;
-  padding: clamp(24px, 3vw, 44px) clamp(22px, 3.4vw, 52px) 44px;
-}
-.caseKind {
+  align-items: center;
   color: var(--ink-3);
 }
-.caseName {
-  margin-top: 8px !important;
-  font-size: clamp(34px, 3.6vw, 54px);
-  line-height: 1.02;
-  font-weight: 400;
-  letter-spacing: -0.035em;
+.ppName {
+  margin-top: 12px !important;
+  font-size: clamp(44px, 5.2vw, 84px);
+  line-height: 0.98;
+  font-weight: 300;
+  letter-spacing: -0.045em;
 }
-.caseOverview {
-  margin-top: 18px !important;
-  max-width: 38em;
-  font-size: 16px;
+.ppOverview {
+  margin-top: 22px !important;
+  max-width: 36em;
+  font-size: 17px;
   line-height: 1.6;
   color: var(--ink-2);
 }
-.caseNumbers {
+.ppNumbers {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--gap);
-  margin-top: 32px !important;
+  margin-top: 36px !important;
   padding-top: 20px;
   border-top: 1px solid var(--line);
 }
-.caseNumber {
-  font-size: clamp(28px, 2.6vw, 40px);
+.ppNumbers dt {
+  font-size: clamp(28px, 2.4vw, 38px);
   line-height: 1;
   font-weight: 300;
   letter-spacing: -0.03em;
-  color: var(--ink);
 }
-.caseNumbers dd {
+.ppNumbers dd {
   margin-top: 10px;
   font-size: 13px;
   line-height: 1.45;
   color: var(--ink-3);
 }
-.caseLabel {
-  margin-top: 36px !important;
-  margin-bottom: 14px !important;
+.ppLabel {
+  margin-top: 44px !important;
+  margin-bottom: 8px !important;
   color: var(--ink-3);
 }
-/* How it works: a row of steps joined by a line; the chosen one lit, a bar timing the next. */
-.flow {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  border-top: 1px solid var(--line-2);
+/* How it works, as a list: the step in play is open, its number in the project's colour, with a
+   line under it timing the next step while it plays through on its own. */
+.ppSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
 }
-.flowStep {
+.ppSteps li {
+  border-bottom: 1px solid var(--line);
+}
+.ppSteps button {
   all: unset;
   box-sizing: border-box;
   position: relative;
+  width: 100%;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 10px 12px 0;
+  display: grid;
+  grid-template-columns: 2.4rem 1fr;
+  align-items: baseline;
+  padding: 14px 0;
   color: var(--ink-3);
   transition: color 0.3s var(--ease);
 }
-.flowStep::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 1px solid var(--ink-3);
-  transition: background-color 0.3s var(--ease), border-color 0.3s var(--ease);
-}
-.flowStep[aria-selected="true"] {
-  color: var(--ink);
-}
-.flowStep[aria-selected="true"]::before {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.flowStep:hover {
+.ppSteps button:hover {
   color: var(--ink-2);
 }
-.flowNum {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
+.ppSteps button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
-.flowName {
-  font-size: 14px;
+.ppSteps button span:last-child {
+  font-size: 15px;
   font-weight: 500;
+}
+.ppSteps li[data-on] button {
+  color: var(--ink);
+}
+.ppSteps li[data-on] button span:first-child {
+  color: var(--hue);
+}
+.ppStepText {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s var(--ease);
+}
+.ppSteps li[data-on] .ppStepText {
+  grid-template-rows: 1fr;
+}
+.ppStepText > div {
+  overflow: hidden;
+  min-height: 0;
+}
+.ppStepText p {
+  max-width: 36em;
+  padding: 0 0 16px 2.4rem;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
 }
 .flowBar {
   position: absolute;
   left: 0;
-  right: 10px;
-  bottom: 0;
+  right: 0;
+  bottom: -1px;
   height: 1px;
-  background: var(--ink-2);
+  background: var(--hue, var(--ink-2));
   transform-origin: left;
   animation: flowFill linear both;
 }
@@ -1126,14 +1182,38 @@
     transform: scaleX(1);
   }
 }
-.flowText {
-  margin-top: 14px !important;
-  min-height: 4.8em;
-  max-width: 38em;
-  font-size: 15px;
-  line-height: 1.6;
+.ppNext {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 72px 0 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+}
+.ppNextName {
+  font-size: clamp(32px, 3.4vw, 52px);
+  line-height: 1.05;
+  font-weight: 300;
+  letter-spacing: -0.035em;
   color: var(--ink);
-  animation: caseFade 0.4s var(--ease) both;
+  transition: color 0.3s var(--ease);
+}
+@media (hover: hover) {
+  .ppNext:hover .ppNextName {
+    color: var(--next);
+  }
+}
+/* Keyboard hints mean nothing on a touch screen. */
+@media (hover: none) {
+  .keysHint {
+    display: none;
+  }
+}
+.ppNextLine {
+  max-width: 34em;
+  font-size: 15px;
+  color: var(--ink-2);
 }
 
 /* Education */
@@ -1408,8 +1488,18 @@
   .pTile[data-size="md"] {
     grid-column: span 1;
   }
-  .caseBody {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  .ppStage {
+    grid-column: 1 / -1;
+    position: relative;
+    top: auto;
+    height: 62svh;
+  }
+  .ppScreen {
+    margin-inline: calc(-1 * var(--pad));
+  }
+  .ppBody {
+    grid-column: 1 / -1;
+    padding: 28px 0 0;
   }
 }
 
@@ -1503,50 +1593,20 @@
   .pStatValue {
     font-size: 28px;
   }
-  /* The sheet fills a phone's screen; the scene sits on top and the detail scrolls under it. */
-  .case {
-    inset: 0;
-    border: 0;
+  /* A project's page on a phone: the breadcrumb starts at Projects, and the numbers stack. */
+  .crumbs li:first-child,
+  .ppCount {
+    display: none;
   }
-  .caseBody {
-    display: block;
-    overflow-y: auto;
+  .crumbs li:nth-child(2)::before {
+    display: none;
   }
-  .caseStage {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+  .ppStage {
+    height: 48svh;
   }
-  .caseScreen {
-    flex: none;
-    height: 42svh;
-  }
-  .caseInfo {
-    overflow: visible;
-  }
-  .caseNumbers {
+  .ppNumbers {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 18px;
-  }
-  .flow {
-    grid-auto-flow: row;
-    grid-auto-columns: auto;
-    border-top: 0;
-    border-left: 1px solid var(--line-2);
-  }
-  .flowStep {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 12px;
-    padding: 10px 0 10px 18px;
-  }
-  .flowStep::before {
-    top: 50%;
-    left: -4px;
-    margin-top: -4px;
-  }
-  .flowBar {
-    left: 18px;
-    right: 0;
   }
   .eduRow {
     grid-template-columns: minmax(0, 1fr);

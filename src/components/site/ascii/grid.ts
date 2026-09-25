@@ -3,9 +3,17 @@
 
 export const ASPECT = 0.6; // cell width over cell height
 
+/** The colours a character can take besides the ink. Each has one meaning across the site:
+ * live is the orange accent (what is happening now, or the one thing that matters); green is
+ * done, passed or ESG; blue is data, water and structure; violet is AI and agents; pink is
+ * creators and social. Used on a few characters per scene, never whole scenes. */
+export type Tone = "live" | "green" | "blue" | "violet" | "pink";
+export const TONES: readonly Tone[] = ["live", "green", "blue", "violet", "pink"];
+
 export class Grid {
   ch: string[];
   a: Float32Array;
+  /** The tone of each cell: 0 for ink, otherwise 1 + its index in TONES. */
   hot: Uint8Array;
   constructor(
     public cols: number,
@@ -20,8 +28,10 @@ export class Grid {
     this.a.fill(0);
     this.hot.fill(0);
   }
-  /** Writes text at a cell; later writes win unless keep is set and the cell is brighter. */
-  put(x: number, y: number, text: string, alpha: number, hot = false, keep = false) {
+  /** Writes text at a cell; later writes win unless keep is set and the cell is brighter.
+   * hot is true for the live accent, or a Tone. */
+  put(x: number, y: number, text: string, alpha: number, hot: boolean | Tone = false, keep = false) {
+    const tone = hot === true ? 1 : hot ? TONES.indexOf(hot) + 1 : 0;
     const yi = Math.round(y);
     if (yi < 0 || yi >= this.rows) return;
     const xi = Math.round(x);
@@ -32,7 +42,7 @@ export class Grid {
       if (keep && this.a[i] >= alpha) continue;
       this.ch[i] = text[k];
       this.a[i] = alpha;
-      this.hot[i] = hot ? 1 : 0;
+      this.hot[i] = tone;
     }
   }
 }
