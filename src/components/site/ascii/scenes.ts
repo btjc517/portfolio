@@ -362,9 +362,9 @@ function scout(cols: number, rows: number): Sim {
 function report(cols: number, rows: number): Sim {
   const names = ["scope 1", "scope 2", "scope 3", "energy", "water", "waste", "social", "governance"];
   const lines = Math.max(3, Math.min(names.length, rows - 8));
-  // With rows to spare (the large stage) the lines spread out and each bar is two characters thick.
-  const step = clamp(Math.floor((rows - 9) / lines), 1, 3);
-  const thick = step >= 3 ? 2 : 1;
+  // With rows to spare (the large stage) the lines spread out and the bars thicken.
+  const step = clamp(Math.floor((rows - 9) / lines), 1, 5);
+  const thick = step >= 5 ? 3 : step >= 3 ? 2 : 1;
   const y0 = step > 1 ? 4 : 3;
   const barX = 14;
   const barW = Math.max(6, cols - barX - 8);
@@ -413,20 +413,32 @@ function report(cols: number, rows: number): Sim {
 
 // ---- Access Technologies: a padel rally on a court booked through the app ----------------------
 
+// Padel is doubles: two players a side, one up at the net and one back. On a large screen each is
+// a small figure; on a small one, a head over a body.
 function court(cols: number, rows: number): Sim {
   const x0 = 2;
   const x1 = cols - 3;
   const y0 = 3;
   const y1 = rows - 2;
   const net = Math.round((x0 + x1) / 2);
-  const p = [
-    { x: x0 + 3, y: (y0 + y1) / 2 },
-    { x: x1 - 3, y: (y0 + y1) / 2 },
+  const mid = (y0 + y1) / 2;
+  const half = net - x0;
+  // Service lines sit 6.95 m from the net on a 10 m half.
+  const sl = Math.round(net - half * 0.695);
+  const sr = Math.round(net + half * 0.695);
+  const big = rows >= 24;
+  const players = [
+    { x: x0 + Math.round(half * 0.18), y: mid - (y1 - y0) * 0.22, side: 0 },
+    { x: net - Math.round(half * 0.35), y: mid + (y1 - y0) * 0.22, side: 0 },
+    { x: x1 - Math.round(half * 0.18), y: mid + (y1 - y0) * 0.22, side: 1 },
+    { x: net + Math.round(half * 0.35), y: mid - (y1 - y0) * 0.22, side: 1 },
   ];
-  const ball = { x: net, y: (y0 + y1) / 2, vx: (x1 - x0) * 0.55, vy: rand(-6, 6) };
+  const home = players.map((q) => q.y);
+  const ball = { x: net, y: mid, vx: (x1 - x0) * 0.5, vy: rand(-6, 6) };
   const trail: [number, number][] = [];
   let rally = 0;
   let every = 0;
+  let hitter = 0;
   return {
     step(dt) {
       ball.x += ball.vx * dt;
@@ -434,27 +446,31 @@ function court(cols: number, rows: number): Sim {
       if (ball.y < y0 + 1) (ball.y = y0 + 1), (ball.vy = Math.abs(ball.vy));
       if (ball.y > y1 - 1) (ball.y = y1 - 1), (ball.vy = -Math.abs(ball.vy));
       const side = ball.vx < 0 ? 0 : 1;
-      const pl = p[side];
-      if ((side === 0 && ball.x <= pl.x + 1) || (side === 1 && ball.x >= pl.x - 1)) {
-        ball.vx = -ball.vx;
-        ball.vy = rand(-1, 1) * (y1 - y0) * 0.9;
+      // The player on the ball's side nearest its line takes it.
+      const mine = players.filter((q) => q.side === side);
+      const who = mine.reduce((p, q) => (Math.abs(q.y - ball.y) < Math.abs(p.y - ball.y) ? q : p));
+      if ((side === 0 && ball.x <= who.x + 1) || (side === 1 && ball.x >= who.x - 1)) {
+        ball.vx = -ball.vx * rand(0.9, 1.1);
+        ball.vx = Math.sign(ball.vx) * clamp(Math.abs(ball.vx), (x1 - x0) * 0.4, (x1 - x0) * 0.62);
+        ball.vy = rand(-1, 1) * (y1 - y0) * 0.8;
+        hitter = players.indexOf(who);
         rally++;
       }
-      // Each player moves toward where the ball is heading; the other drifts back to centre.
-      p.forEach((q, k) => {
-        const target = k === side ? ball.y : (y0 + y1) / 2;
-        q.y += clamp(target - q.y, -1, 1) * dt * 9;
+      players.forEach((q, k) => {
+        const chasing = q.side === side && q === who;
+        const target = chasing ? ball.y : home[k];
+        q.y += clamp(target - q.y, -1, 1) * dt * (chasing ? 10 : 4);
       });
       every += dt;
       if (every > 1 / 30) {
         every = 0;
         trail.unshift([Math.round(ball.x), Math.round(ball.y)]);
-        if (trail.length > 6) trail.pop();
+        if (trail.length > 7) trail.pop();
       }
     },
     draw(g) {
       g.put(2, 1, "COURT 2", 0.5);
-      if (cols > 30) g.put(10, 1, "19:00, booked", 0.24);
+      if (cols > 30) g.put(10, 1, "19:00, booked, doubles", 0.24);
       const r = `rally ${rally}`;
       g.put(cols - 2 - r.length, 1, r, 0.5);
       for (let x = x0; x <= x1; x++) {
@@ -465,15 +481,25 @@ function court(cols: number, rows: number): Sim {
         g.put(x0, y, "|", 0.3);
         g.put(x1, y, "|", 0.3);
         g.put(net, y, ":", 0.45);
-        g.put(Math.round((x0 + net) / 2), y, ".", 0.1);
-        g.put(Math.round((net + x1) / 2), y, ".", 0.1);
+        g.put(sl, y, "|", 0.14);
+        g.put(sr, y, "|", 0.14);
       }
+      // The centre service line runs from each service line to the net.
+      for (let x = sl; x <= sr; x++) if (x !== net) g.put(x, Math.round(mid), "-", 0.12);
       for (const [x, y] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) g.put(x, y, "+", 0.4);
-      trail.forEach(([x, y], k) => g.put(x, y, k < 2 ? "o" : ".", 0.5 - k * 0.07));
-      for (const q of p) {
-        g.put(q.x, q.y - 1, "o", 0.6);
-        g.put(q.x, q.y, "@", 0.9);
-      }
+      trail.forEach(([x, y], k) => g.put(x, y, k < 2 ? "o" : ".", 0.5 - k * 0.06));
+      players.forEach((q, k) => {
+        const on = k === hitter;
+        const y = Math.round(q.y);
+        if (big) {
+          g.put(q.x, y - 1, "o", on ? 0.9 : 0.6);
+          g.put(q.x - 1, y, "/|\\", on ? 0.9 : 0.6);
+          g.put(q.x - 1, y + 1, "/ \\", on ? 0.7 : 0.45);
+        } else {
+          g.put(q.x, y - 1, "o", 0.6);
+          g.put(q.x, y, "@", 0.9);
+        }
+      });
       g.put(ball.x, ball.y, "o", 1, true);
     },
   };
@@ -575,6 +601,7 @@ function silverstone(cols: number, rows: number): Sim {
   });
   // Corner names sit just outside the track, on whichever side is clear.
   const [cx0, cy0] = pts.reduce(([sx, sy], [x, y]) => [sx + x / n, sy + y / n], [0, 0]);
+  const taken = new Set<string>(); // cells already used by a placed name, with a gap round it
   const labels = TURNS.map(([k, name]) => {
     const [x, y] = at(k);
     const [mx, my] = [x0 + (cx0 * sc) / ASPECT, y0 + cy0 * sc];
@@ -587,8 +614,11 @@ function silverstone(cols: number, rows: number): Sim {
       const lx = Math.round(x + (vx * 2) / ASPECT - (vx < -0.3 ? name.length - 1 : vx > 0.3 ? 0 : name.length / 2));
       const ly = Math.round(y + vy * 1.5);
       let clear = lx >= 1 && lx + name.length < cols && ly > top && ly < rows - foot;
-      for (let q = -1; clear && q <= name.length; q++) if (cells.has(`${lx + q},${ly}`)) clear = false;
-      if (clear) return { x: lx, y: ly, name };
+      for (let q = -1; clear && q <= name.length; q++) if (cells.has(`${lx + q},${ly}`) || taken.has(`${lx + q},${ly}`)) clear = false;
+      if (clear) {
+        for (let q = -1; q <= name.length; q++) for (const dy of [-1, 0, 1]) taken.add(`${lx + q},${ly + dy}`);
+        return { x: lx, y: ly, name };
+      }
     }
     return null;
   });
@@ -771,7 +801,7 @@ function fund(cols: number, rows: number): Sim {
 // ---- Create Group: a feed scrolling on a phone, the numbers going up ----------------------------
 
 function feed(cols: number, rows: number): Sim {
-  const pw = Math.min(26, Math.max(16, Math.floor(cols * 0.46)));
+  const pw = Math.min(34, Math.max(16, Math.floor(cols * 0.46)));
   // Wide screens centre the phone and its reach bar together; narrow ones centre the phone alone.
   const px = cols > 40 ? Math.max(3, Math.floor((cols - pw - 10) / 2)) : Math.floor((cols - pw) / 2);
   const py = 2;

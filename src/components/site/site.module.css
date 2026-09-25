@@ -452,8 +452,10 @@
 .stageCoords {
   color: var(--ink-4);
 }
+/* The screen runs out through the page margin to the edge of the window. */
 .stageScreen {
   position: relative;
+  margin-left: calc(-1 * var(--pad));
   height: min(100cqw, calc(100svh - 270px));
   min-height: 240px;
   overflow: hidden;
@@ -1064,6 +1066,7 @@
   .railStaged .stage[data-shape="wide"] .stageScreen {
     height: 42cqw;
     min-height: 0;
+    margin-inline: calc(-1 * var(--pad));
   }
   .bodyStaged {
     padding-left: 0;

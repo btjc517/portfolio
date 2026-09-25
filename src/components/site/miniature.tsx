@@ -11,10 +11,11 @@ import { SCENES, type SceneKind } from "./ascii/scenes";
 // rows of characters to fit, and `maxCell` caps the row height, so a large screen can show the
 // same scene with bigger characters rather than a sparse one.
 //
-// With `field` set, the scene runs in a window in the middle of the canvas and the rest is a field
-// of dim, shifting characters. Both edges of the field are ragged and move: the outer one
-// dissolves into the page, and the inner one now and then creeps a cell or two into the scene's
-// empty cells, never over what the scene draws.
+// With `field` set, the scene runs in a window that fills most of the canvas and the rest is a
+// field of dim, shifting characters that runs right to the canvas's edges. If the canvas is wider
+// than its tile (it bleeds past the page margin), the window stays over the tile and the field
+// fills the overhang. The field's inner edge wobbles, and now and then creeps a cell or two into
+// the scene's empty cells, never over what the scene draws.
 
 const SWITCH = 0.55; // seconds the scramble between scenes takes
 const NOISE = ".:;+=*x#%";
@@ -86,9 +87,11 @@ export function Miniature({
     let oy = 0;
     let cols = 0;
     let rowsN = 0;
-    // The scene's window inside the canvas grid, as a margin in cells (none without a field).
-    let mx = 0;
-    let my = 0;
+    // The scene's window inside the canvas grid, as margins in cells (none without a field).
+    let mxL = 0;
+    let mxR = 0;
+    let myT = 0;
+    let myB = 0;
     let grid: Grid | null = null;
     let sim: Sim | null = null;
     let current: SceneKind = kindRef.current;
@@ -142,43 +145,48 @@ export function Miniature({
       rowsN = Math.floor(H / cellH);
       ox = (W - cols * cellW) / 2;
       oy = (H - rowsN * cellH) / 2;
-      mx = sizeRef.current.field ? Math.max(3, Math.round(cols * 0.15)) : 0;
-      my = sizeRef.current.field ? Math.max(2, Math.round(rowsN * 0.12)) : 0;
-      grid = new Grid(cols - 2 * mx, rowsN - 2 * my);
+      if (sizeRef.current.field) {
+        // How far the canvas overhangs its tile on each side, which the field alone fills.
+        const box = canvas.getBoundingClientRect();
+        const own = tile?.getBoundingClientRect();
+        const overL = own ? Math.max(0, own.left - box.left) : 0;
+        const overR = own ? Math.max(0, box.right - own.right) : 0;
+        const band = Math.max(2, Math.round(cols * 0.03));
+        mxL = Math.round(overL / cellW) + band;
+        mxR = Math.round(overR / cellW) + band;
+        myT = myB = Math.max(2, Math.round(rowsN * 0.035));
+      } else mxL = mxR = myT = myB = 0;
+      grid = new Grid(cols - mxL - mxR, rowsN - myT - myB);
       sprites = new Map();
       start(current);
     }
 
-    // How strongly the field shows at a cell, and which character it shows there. The field is a
-    // cloud rather than a frame: densest where it closes round the scene, thinning out towards
-    // the edges of the canvas, with a clearing that wobbles in and out in slow lobes and density
-    // that comes in patches.
+    // How strongly the field shows at a cell, and which character it shows there. It is densest
+    // where it closes round the scene and keeps going to the canvas's edges, with a clearing that
+    // wobbles in and out in slow lobes and density that comes in patches.
     function fieldAt(c: number, r: number): [number, string] {
       // Distance into the scene's window (positive inside), with its corners rounded off, and
       // distance to the canvas edge, both in row heights.
-      const band = Math.min(mx * ASPECT, my);
-      const rad = band * 1.3;
-      const hx = ((cols - 2 * mx) * ASPECT) / 2;
-      const hy = (rowsN - 2 * my) / 2;
-      const qx = Math.abs((c + 0.5 - cols / 2) * ASPECT) - (hx - rad);
-      const qy = Math.abs(r + 0.5 - rowsN / 2) - (hy - rad);
+      const rad = 2.2;
+      const hx = ((cols - mxL - mxR) * ASPECT) / 2;
+      const hy = (rowsN - myT - myB) / 2;
+      const qx = Math.abs((c + 0.5 - (mxL + (cols - mxL - mxR) / 2)) * ASPECT) - (hx - rad);
+      const qy = Math.abs(r + 0.5 - (myT + (rowsN - myT - myB) / 2)) - (hy - rad);
       const e = -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rad);
       const o = Math.min((c + 0.5) * ASPECT, (cols - c - 0.5) * ASPECT, r + 0.5, rowsN - r - 0.5);
       const drift = t * 0.14;
-      const wobble = (fbm(c * 0.07 + 40, r * 0.11, drift) - 0.5) * 2.6;
+      const wobble = (fbm(c * 0.07 + 40, r * 0.11, drift) - 0.5) * 2.2;
       const reach = Math.pow(fbm(c * 0.19 + 3, r * 0.3, drift * 1.8), 3) * 2.2;
-      const inner = clamp((-0.5 + wobble + reach - e) / 1.1);
-      const rim = 0.2 + 1.2 * fbm(c * 0.09, r * 0.15 + 30, drift * 0.8);
-      const outer = clamp((o - rim) / (band * 0.9));
-      const w = inner * (0.25 + 0.75 * outer);
-      if (w <= 0.03 || o < rim) return [0, ""];
+      const w = clamp((-0.4 + wobble + reach - e) / 1.1);
+      // The very edge of the canvas is only a little ragged.
+      if (w <= 0.03 || o < 0.5 * hash(c * 13 + 5, r * 7 + Math.floor(t * 0.8))) return [0, ""];
       const dens = fbm(c * 0.11 + 9, r * 0.18, drift * 1.2);
       // Each cell re-rolls at its own slow rate, in place: whether it shows, and what it shows.
       const roll = Math.floor(t * (0.35 + 1.9 * hash(c + 7, r)) + hash(r, c) * 13);
       const coin = hash(c * 17 + roll, r * 31 - roll);
-      if (coin > w * (0.42 + 0.8 * dens)) return [0, ""];
+      if (coin > w * (0.45 + 0.7 * dens)) return [0, ""];
       const k = clamp(dens * 0.7 + hash(c * 5 - roll, r * 11 + roll) * 0.45);
-      return [0.1 + 0.3 * w * dens, FIELD[Math.min(FIELD.length - 1, Math.floor(k * FIELD.length))]];
+      return [0.1 + 0.28 * w * dens, FIELD[Math.min(FIELD.length - 1, Math.floor(k * FIELD.length))]];
     }
 
     function render() {
@@ -191,11 +199,11 @@ export function Miniature({
       const gr = grid.rows;
       const p = (t - switchedAt) / SWITCH;
       const tick = Math.floor(t * 24);
-      const hasField = mx > 0;
+      const hasField = mxL > 0;
       for (let r = 0; r < rowsN; r++) {
         for (let c = 0; c < cols; c++) {
-          const sc = c - mx;
-          const sr = r - my;
+          const sc = c - mxL;
+          const sr = r - myT;
           let glyph = "";
           let alpha = 0;
           let isHot = false;

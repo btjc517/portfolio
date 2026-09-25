@@ -126,7 +126,7 @@ export function Stage({ items, active, shape, span }: { items: Item[]; active: s
         </span>
       </figcaption>
       <div className={s.stageScreen}>
-        <Miniature kind={item.scene} label={`${item.name}: ${item.caption}, animated in characters`} rows={shape === "tall" ? 24 : 17} maxCell={17} field />
+        <Miniature kind={item.scene} label={`${item.name}: ${item.caption}, animated in characters`} rows={shape === "tall" ? 56 : 28} maxCell={12} field />
       </div>
       <div className={`${s.mono} ${s.years}`} role="img" aria-label={`${item.name}, ${item.when}`}>
         {years.map((y) => {
